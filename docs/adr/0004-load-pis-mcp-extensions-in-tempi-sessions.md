@@ -3,7 +3,7 @@
 Date: 2026-11-10
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 [ADR 0003](0003-mcp-through-pis-built-in-mcp-support.md) decided that tempi reaches MCP servers through pi's built-in support, and left open how a session created through the SDK loads them. pi 1.5.2's SDK documentation (`docs/sdk.md`, "Codemode and MCP", and `examples/sdk/14-codemode-mcp.ts`) answers it: the CLI loads MCP, `codemode`, and `tool_search` as built-in extensions, and SDK sessions do not. An SDK session adds them through the resource loader. By default a server's tools are reachable only from `codemode` scripts; servers set to `deferred` exposure need `tool_search`.
