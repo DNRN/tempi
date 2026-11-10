@@ -1,0 +1,27 @@
+{
+  "name": "tempi",
+  "version": "0.0.0",
+  "description": "An AI harness built on the pi agent for co-creating playable games",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "tempi": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

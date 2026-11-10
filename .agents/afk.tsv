@@ -1,2 +1,11 @@
 kind	name	version	hash	reason	paths
-skill	project-init	0.4.0	d8a2b39921ad2b9bd501c14e1efd79c5e2ab516f0de0c77f182f62ac945b6085	explicit	.agents/skills/project-init .claude/skills/project-init
+skill	adr-planning	0.5.0	49c3d0f84062f127b4cfc732a12bbba9ed908ab3d5ffca892370b749aee3f19e	explicit	.agents/skills/adr-planning .claude/skills/adr-planning
+skill	code-review	0.4.0	917e24655267366b19f8c61ee84ab27b9fada69d6e5796bab2e19e7d5c317a0c	explicit	.agents/skills/code-review .claude/skills/code-review
+agent	code-reviewer	0.4.0	0d1bfa62e66076452a33f0533ce7c8f4bcd650679c59d2029dc2e58cdc2f8a82	explicit	.claude/agents/code-reviewer.md
+hook	commit-gate	0.4.0	45b286521d7d94ebe8c8ed47396aafd1f9004a49eeb074846be2ead8b190bb74	explicit	.agents/hooks/commit-gate.sh
+agent	doc-auditor	0.4.0	b639e5ae0ab5d0a8d1c610fd883bb33d0d726404e72b2ef0561e2e83c7da96ae	explicit	.claude/agents/doc-auditor.md
+skill	doc-sync	0.4.0	438d236082466776840922716979badd1fd30ab88544016021e87ebc4c127737	explicit	.agents/skills/doc-sync .claude/skills/doc-sync
+skill	feature-planning	0.5.0	48392d2fc3080f47f606026b47bf03ff3f56ae8343628d7080673058dc965a66	explicit	.agents/skills/feature-planning .claude/skills/feature-planning
+agent	feature-scout	0.5.0	2493fbe8cb77df3e3508fc91327504a81f4b2bde47410a9289bd15bbcc6191d6	explicit	.claude/agents/feature-scout.md
+skill	project-init	0.5.0	8178c3d834a81ac4b1914897cea941cd254a6b7068ef524ecd1c2fe97548e21a	explicit	.agents/skills/project-init .claude/skills/project-init
+skill	ship	0.4.0	970a4e0c8151b513a7d33e163407b181d0108d69e25ead3a2877f3e9fe23903f	explicit	.agents/skills/ship .claude/skills/ship
