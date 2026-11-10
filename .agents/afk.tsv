@@ -1,0 +1,2 @@
+kind	name	version	hash	reason	paths
+skill	project-init	0.4.0	d8a2b39921ad2b9bd501c14e1efd79c5e2ab516f0de0c77f182f62ac945b6085	explicit	.agents/skills/project-init .claude/skills/project-init
