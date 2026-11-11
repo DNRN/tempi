@@ -4,15 +4,30 @@ tempi is an AI harness for co-creating playable games, built on the [pi agent](h
 
 ## Status
 
-Early development: the co-creation loop runs for both targets, web and Godot; asset guidance and the acceptance runs are next ([plan](docs/plans/vertical-slice.md)).
+Early development: the co-creation loop runs end to end for both targets, web and Godot, with generated assets from your MCP servers. The acceptance runs of the first milestone are next ([plan](docs/plans/vertical-slice.md)).
 
 See [PROJECT.md](PROJECT.md) for purpose, scope, and open decisions, and [docs/adr/](docs/adr/) for architecture decisions.
+
+## Setup
+
+1. **Node ≥ 22**, then in this repository: `npm install && npm run build`.
+2. **A model** pi can use: run `npx pi`, then `/login` (or set a provider's API key). tempi uses pi's default model unless you pass `--model`.
+3. **A game engine** for your target: Google Chrome for web games, or Godot 4 as `godot` on PATH for Godot games.
+4. **Asset generators (optional)**: MCP servers that make images, sounds, or 3D models, added with pi's own command. Give each a `--description` of what it makes; tempi shows it to the agent. For example, a local ComfyUI through the `comfy-mcp` server:
+
+   ```sh
+   npx pi mcp add comfyui --description "Local ComfyUI: image generation for sprites and textures" \
+     --env COMFY_LOCAL_URL=http://127.0.0.1:8188 -- comfy-mcp
+   npx pi mcp list   # check that it connects
+   ```
+
+   Without any, the agent draws the art in code.
 
 ## Usage
 
 ```sh
-npm install && npm run build
 node dist/cli.js "a cat catches falling fish"
+node dist/cli.js --target godot "roll a ball through a small obstacle course"
 ```
 
 tempi creates a folder for the game (named after the idea), builds a first version with the agent, checks it (headless Chrome for web, headless Godot for Godot), and opens it: in your browser, or in a Godot window. Then it asks what to change: type a change to rebuild, or press Enter to finish.
@@ -24,8 +39,6 @@ tempi [options] "<game idea>"
   -m, --model <pattern>     model, as for pi --model (default: pi's default model)
       --no-open             don't open the game; print where it is or how to play it
 ```
-
-You need a model pi can use (log in with `pi`, then `/login`), Google Chrome for the web target, and Godot 4 as `godot` on PATH for the Godot target.
 
 ## What ships with tempi
 
@@ -48,7 +61,8 @@ Requires Node ≥ 22, Google Chrome, and Godot 4 (`godot` on PATH): the targets 
 
 ```sh
 npm install
-npm test        # vitest
+npm test        # vitest, including end-to-end smoke tests per target with a scripted model
+npm run test:local-mcp   # end-to-end with your own ComfyUI MCP server (uses the GPU)
 npm run typecheck
 npm run build   # tsc → dist/
 ```

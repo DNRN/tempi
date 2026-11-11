@@ -1,14 +1,11 @@
 #!/usr/bin/env node
 import { createInterface } from "node:readline/promises";
-import { getAgentDir, ModelRuntime, resolveCliModel } from "@earendil-works/pi-coding-agent";
-import { configuredMcpServerCount, waitForAssetGenerators } from "./assets.js";
+import { ModelRuntime, resolveCliModel } from "@earendil-works/pi-coding-agent";
+import { startTempiAgent } from "./agent.js";
 import { parseCliArgs, USAGE } from "./cli-args.js";
 import { type LoopIO, runCoCreation } from "./loop.js";
 import { createProgressPrinter } from "./progress.js";
-import { createTempiSession } from "./session.js";
-import { createCheckGameTool } from "./targets/check-tool.js";
 import { createTarget } from "./targets/index.js";
-import { createSaveAssetTool } from "./tools/save-asset.js";
 import { tempiVersion } from "./version.js";
 import { chooseWorkspace } from "./workspace.js";
 
@@ -82,29 +79,19 @@ async function main(argv: string[]): Promise<number> {
       target,
       workspace,
       io,
-      async startAgent(dir) {
-        const tempi = await createTempiSession({
+      startAgent: (dir) =>
+        startTempiAgent({
+          target,
           workspace: dir,
           modelRuntime,
           model,
           thinkingLevel,
-          customTools: [createCheckGameTool(target, dir), createSaveAssetTool(dir)],
-        });
-        for (const error of tempi.extensionErrors) io.info(`Extension problem (${error.extensionPath}): ${error.error}`);
-        const active = tempi.session.model;
-        if (active) io.info(`Model: ${active.provider}/${active.id}`);
-        // pi connects MCP servers in the background; wait for them so the prompts can name them.
-        const assetGenerators = await waitForAssetGenerators(() => tempi.session.getAllTools(), configuredMcpServerCount(getAgentDir()));
-        const unsubscribe = tempi.session.subscribe((event) => progress.onEvent(event));
-        return {
-          agent: { prompt: (text) => tempi.session.prompt(text) },
-          assetGenerators,
-          dispose() {
-            unsubscribe();
-            tempi.dispose();
+          onEvent: (event) => progress.onEvent(event),
+          onStart({ model: active, extensionErrors }) {
+            for (const error of extensionErrors) io.info(`Extension problem (${error.extensionPath}): ${error.error}`);
+            if (active) io.info(`Model: ${active}`);
           },
-        };
-      },
+        }),
     });
     return result.lastCheck.playable ? 0 : 1;
   } finally {
