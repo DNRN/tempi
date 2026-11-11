@@ -4,13 +4,28 @@ tempi is an AI harness for co-creating playable games, built on the [pi agent](h
 
 ## Status
 
-Early development. The co-creation loop is the first milestone ([plan](docs/plans/vertical-slice.md)); right now the CLI only reports its version:
-
-```sh
-node dist/cli.js   # prints: tempi <version>
-```
+Early development: the co-creation loop runs for the web target; the Godot target is next ([plan](docs/plans/vertical-slice.md)).
 
 See [PROJECT.md](PROJECT.md) for purpose, scope, and open decisions, and [docs/adr/](docs/adr/) for architecture decisions.
+
+## Usage
+
+```sh
+npm install && npm run build
+node dist/cli.js "a cat catches falling fish"
+```
+
+tempi creates a folder for the game (named after the idea), builds a first version with the agent, checks it in headless Chrome, and opens it in your browser. Then it asks what to change: type a change to rebuild, or press Enter to finish.
+
+```
+tempi [options] "<game idea>"
+  -t, --target <web|godot>  game target (default: web; godot is not built yet)
+  -o, --out <dir>           workspace directory (default: a new folder named after the idea)
+  -m, --model <pattern>     model, as for pi --model (default: pi's default model)
+      --no-open             don't open the game in a browser; print its address only
+```
+
+You need a model pi can use (log in with `pi`, then `/login`) and Google Chrome.
 
 ## What ships with tempi
 

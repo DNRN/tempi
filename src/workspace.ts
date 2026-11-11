@@ -1,5 +1,42 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
+
+/** A folder name from the idea: lowercase words joined by dashes, at most 40 characters. */
+export function workspaceName(idea: string): string {
+  const slug = idea
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/, "");
+  return slug || "game";
+}
+
+function isEmptyDir(dir: string): boolean {
+  return readdirSync(dir).length === 0;
+}
+
+/**
+ * Chooses the game's workspace. An explicit `out` must be new or empty. Without
+ * one, a new folder in `parent` is named after the idea, with -2, -3, ... added
+ * when the name is taken.
+ */
+export function chooseWorkspace(idea: string, parent: string, out?: string): string {
+  if (out) {
+    const dir = path.resolve(parent, out);
+    if (existsSync(dir) && (!statSync(dir).isDirectory() || !isEmptyDir(dir))) {
+      throw new Error(`${dir} already exists and is not an empty directory. Choose a new --out.`);
+    }
+    return dir;
+  }
+  const base = path.resolve(parent, workspaceName(idea));
+  for (let n = 1; ; n++) {
+    const dir = n === 1 ? base : `${base}-${n}`;
+    if (!existsSync(dir) || (statSync(dir).isDirectory() && isEmptyDir(dir))) return dir;
+  }
+}
 
 /** Where a workspace keeps tempi's pi session files. */
 export function sessionDir(workspace: string): string {

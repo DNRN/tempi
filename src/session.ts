@@ -27,6 +27,7 @@ export interface TempiSessionOptions {
   modelRuntime?: ModelRuntime;
   /** Model to use. Default: pi's settings, else the first available. */
   model?: SessionModel;
+  thinkingLevel?: AgentSession["thinkingLevel"];
   /** Default: a persistent session in the workspace's `.tempi/sessions`. */
   sessionManager?: SessionManager;
   /** Default: the packages tempi ships. */
@@ -88,6 +89,7 @@ export async function createTempiSession(options: TempiSessionOptions): Promise<
     agentDir,
     modelRuntime: options.modelRuntime,
     model: options.model,
+    thinkingLevel: options.thinkingLevel,
     resourceLoader,
     customTools: options.customTools,
     settingsManager: SettingsManager.create(workspace, agentDir),

@@ -46,7 +46,7 @@ None. pi's built-in MCP stays.
 - **pi-subagents ships coding agents** (scout, reviewer, oracle, researcher, …), a skill, and prompts. Used as they are; game-specific agents are a later plan.
 - **Shared user config.** `web-search.json`, keys, and caches are the user's pi files; tempi's agent sees the same keys as the user's pi.
 - **Web access sends data out.** With no keys it searches through Exa's hosted MCP; fetched page content goes to hosted extractors only on explicit opt-in. Stated in the README.
-- **pi-subagents warns on every launch** that `defaultExtensions: []` disables all ambient extensions for the child. That is the intent, but the warning reaches the console. Follow-up when the CLI loop is built (slice step 7): filter it, or list the child extensions explicitly if that keeps workspaces portable.
+- **pi-subagents warns on every launch** that `defaultExtensions: []` disables all ambient extensions for the child. That is the intent, but the warning reaches the console. Handled in slice step 7: the CLI drops this one message and passes every other warning through (`src/cli.ts`).
 - **Size and supply chain.** 28 MB for the two packages (11 MB web access, 17 MB subagents); 234 MB `node_modules` together with the pi SDK. Both release often. Each bump is reviewed.
 - **Package roots can't be found with `require.resolve("<pkg>/package.json")`**: pi-subagents' `exports` hides it. Handled: walk `require.resolve.paths(name)` for a directory with `package.json`.
 
