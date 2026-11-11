@@ -17,7 +17,7 @@ tempi is an AI harness for creating games, built on the pi agent (badlogic pi-mo
 ### First milestone
 
 - The full co-creation loop: idea → playable game → one round of requested changes → playable again.
-- Game targets: web (HTML5) build and Godot. Godot comes from the user's system (`godot` in PATH), driven headlessly to run/export.
+- Game targets: web (HTML5) build and Godot. Godot comes from the user's system (`godot` in PATH), run headlessly to check the game.
 - Done means: the loop runs hands-off — no manual fixing of the generated game code.
 
 ### Later
@@ -40,8 +40,10 @@ tempi is an AI harness for creating games, built on the pi agent (badlogic pi-mo
 | Architecture | tempi is its own app that drives the pi agent programmatically | Keeps game tooling in tempi; pi stays stock |
 | Language | TypeScript / Node | pi's SDK is TypeScript; no bridge layer |
 | Agent | pi agent (badlogic pi-mono) | The harness is built from it |
-| Game targets | Web (HTML5) and Godot (system binary, headless run/export) | Simplicity first; more engines later |
-| Front end | open | CLI, TUI, or web UI not decided |
+| Bundled pi packages | pi-web-access, pi-subagents: pinned npm dependencies; tempi's sessions load only these, not the user's own pi packages ([ADR 0005](docs/adr/0005-bundle-pi-packages-as-pinned-npm-dependencies.md)) | Web lookups and delegation without setup; same behavior on every machine |
+| Game targets | Web (HTML5), checked in headless Google Chrome via Playwright ([ADR 0007](docs/adr/0007-headless-web-check-with-playwright-and-installed-chrome.md)), and Godot 4 (system binary, checked by running it headless) | Simplicity first; more engines later |
+| Game assets | Images, sounds, and 3D models from the user's own MCP servers, added with `pi mcp add` ([ADR 0003](docs/adr/0003-mcp-through-pis-built-in-mcp-support.md), [ADR 0004](docs/adr/0004-load-pis-mcp-extensions-in-tempi-sessions.md)); art drawn in code when there are none | tempi bundles no asset service |
+| Front end | A plain CLI for the first milestone ([ADR 0002](docs/adr/0002-plain-cli-front-end-for-the-vertical-slice.md)); the long-term front end is open | Least code between an idea and a proven loop |
 | Hosting / distribution | open | Not discussed |
 | Licence | MIT | Public-facing tool |
 
@@ -52,7 +54,7 @@ tempi is an AI harness for creating games, built on the pi agent (badlogic pi-mo
 ## Open questions
 
 - What do prospective users do today instead (engines, other AI tools), and why isn't it enough?
-- Is tempi's front end a CLI, a TUI, or a web UI?
+- Is tempi's long-term front end a CLI, a TUI, or a web UI? (The first milestone uses a plain CLI.)
 - How do public users install and run tempi (npm package, binary, hosted)?
 - Which LLM providers / API keys must work?
 - What is explicitly out of scope, even if related (3D, multiplayer, gen-AI assets)?

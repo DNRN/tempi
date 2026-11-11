@@ -14,6 +14,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The web target's check runs the installed Google Chrome (ADR 0007); its tests must not be skipped.
+      - run: google-chrome --version
+      # The Godot target's check runs Godot headless; its tests must not be skipped.
+      - name: Install Godot 4.7.2
+        run: |
+          curl -sSL -o godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          echo "9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65  godot.zip" | sha512sum -c -
+          mkdir -p "$HOME/godot"
+          unzip -q godot.zip -d "$HOME/godot"
+          ln -s "$HOME/godot/Godot_v4.7.2-stable_linux.x86_64" "$HOME/godot/godot"
+          echo "$HOME/godot" >> "$GITHUB_PATH"
+      - run: godot --version
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
