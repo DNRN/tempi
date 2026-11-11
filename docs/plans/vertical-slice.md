@@ -85,7 +85,7 @@ Proposed; agreed when the plan is approved.
 - [x] With no MCP server configured, the loop still completes with placeholder art, and tempi says assets were skipped.
 - [x] One typed change request produces a new playable version in the same workspace, on each target.
 - [x] Neither step needs a manual edit of generated code.
-- [ ] Tests run in CI on push without API keys.
+- [x] Tests run in CI on push without API keys. (PR #1, 2026-11-11: 85 passed, 2 local-MCP tests skipped by design; Chrome 156 and Godot 4.7.2 present, so no browser or Godot test was skipped.)
 
 ## Implementation steps
 
@@ -109,7 +109,7 @@ Proposed; agreed when the plan is approved.
     - Web, "a cat catches falling fish": 4 comfyui images (cat, fish, can, kitchen background), synthesized Web Audio sounds; the change ("add a short cat meow…, make the fish fall a bit faster") made the agent find comfyui's Stable Audio template by searching, generate a meow, convert it to WAV, and save it. Check clean after both turns. An earlier run, before the prompt asked agents to search a generator's templates before giving up, missed the audio template and synthesized the sound instead.
     - Godot, "roll a ball through a small obstacle course": built in 3D with two Blender GLB models (ball, goal flag) and a comfyui floor texture, five synthesized WAV sounds; the change ("play a sound when the ball reaches the finish, and add one more obstacle") added piston gates and a fanfare. Check clean after both turns. The agent built its models in the user's open Blender scene and left unused meshes and materials behind (removed afterwards); the asset guidance now asks for a temporary scene that is deleted after export.
     - Without MCP servers (`--no-mcp`, added for these runs): web drew a night-city scene, cat, and fish in code and checked clean; the change added a synthesized catch sound and faster fish. Godot built a 3D course from primitives with six synthesized sounds; the change added a swinging hammer and a fanfare. tempi said up front that no generators were configured. Both checks clean after both turns.
-    - Not observed live: opening the game in the browser or a Godot window (all runs used `--no-open`; both are covered by tests with a stand-in opener and a stand-in `godot`). CI has not run the new steps yet: the commits are not pushed.
+    - Not observed live: opening the game in the browser or a Godot window (all runs used `--no-open`; both are covered by tests with a stand-in opener and a stand-in `godot`).
 
 ## Refinement log
 
