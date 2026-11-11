@@ -11,7 +11,7 @@ Options:
   -t, --target <${TARGET_IDS.join("|")}>  game target (default: ${DEFAULT_TARGET})
   -o, --out <dir>          workspace directory (default: a new folder named after the idea)
   -m, --model <pattern>    model, as for pi --model (default: pi's default model)
-      --no-open            don't open the game in a browser; print its address only
+      --no-open            don't open the game; print where it is or how to play it
   -h, --help               show this help
   -v, --version            show tempi's version`;
 

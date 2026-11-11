@@ -1,10 +1,10 @@
 import { expect, test } from "vitest";
 import { createTarget, DEFAULT_TARGET } from "./index.js";
 
-test("web is the default target and godot is not built yet", () => {
+test("web is the default target; both targets can be created", () => {
   expect(DEFAULT_TARGET).toBe("web");
   expect(createTarget("web").id).toBe("web");
-  expect(() => createTarget("godot")).toThrow(/not built yet/);
+  expect(createTarget("godot").id).toBe("godot");
 });
 
 test("with open: false, running a web game opens nothing", async () => {

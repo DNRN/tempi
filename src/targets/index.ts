@@ -1,4 +1,5 @@
 import type { Target, TargetId } from "./target.js";
+import { createGodotTarget } from "./godot.js";
 import { createWebTarget } from "./web.js";
 
 export interface TargetOptions {
@@ -15,6 +16,6 @@ export function createTarget(id: TargetId, options: TargetOptions = {}): Target 
     case "web":
       return createWebTarget(options.open === false ? { openUrl: async () => {} } : {});
     case "godot":
-      throw new Error("The Godot target is not built yet (vertical-slice step 8). Use --target web.");
+      return createGodotTarget({ open: options.open !== false });
   }
 }

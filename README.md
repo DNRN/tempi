@@ -4,7 +4,7 @@ tempi is an AI harness for co-creating playable games, built on the [pi agent](h
 
 ## Status
 
-Early development: the co-creation loop runs for the web target; the Godot target is next ([plan](docs/plans/vertical-slice.md)).
+Early development: the co-creation loop runs for both targets, web and Godot; asset guidance and the acceptance runs are next ([plan](docs/plans/vertical-slice.md)).
 
 See [PROJECT.md](PROJECT.md) for purpose, scope, and open decisions, and [docs/adr/](docs/adr/) for architecture decisions.
 
@@ -15,17 +15,17 @@ npm install && npm run build
 node dist/cli.js "a cat catches falling fish"
 ```
 
-tempi creates a folder for the game (named after the idea), builds a first version with the agent, checks it in headless Chrome, and opens it in your browser. Then it asks what to change: type a change to rebuild, or press Enter to finish.
+tempi creates a folder for the game (named after the idea), builds a first version with the agent, checks it (headless Chrome for web, headless Godot for Godot), and opens it: in your browser, or in a Godot window. Then it asks what to change: type a change to rebuild, or press Enter to finish.
 
 ```
 tempi [options] "<game idea>"
-  -t, --target <web|godot>  game target (default: web; godot is not built yet)
+  -t, --target <web|godot>  game target (default: web)
   -o, --out <dir>           workspace directory (default: a new folder named after the idea)
   -m, --model <pattern>     model, as for pi --model (default: pi's default model)
-      --no-open             don't open the game in a browser; print its address only
+      --no-open             don't open the game; print where it is or how to play it
 ```
 
-You need a model pi can use (log in with `pi`, then `/login`) and Google Chrome.
+You need a model pi can use (log in with `pi`, then `/login`), Google Chrome for the web target, and Godot 4 as `godot` on PATH for the Godot target.
 
 ## What ships with tempi
 
@@ -44,7 +44,7 @@ In each game workspace tempi writes `.pi/settings.json` (keeps your pi extension
 
 ## Development
 
-Requires Node ≥ 22 and Google Chrome: the web target checks games in headless Chrome ([ADR 0007](docs/adr/0007-headless-web-check-with-playwright-and-installed-chrome.md)), and its tests run it.
+Requires Node ≥ 22, Google Chrome, and Godot 4 (`godot` on PATH): the targets check games in headless Chrome ([ADR 0007](docs/adr/0007-headless-web-check-with-playwright-and-installed-chrome.md)) and headless Godot, and their tests run them.
 
 ```sh
 npm install
