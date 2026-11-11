@@ -20,6 +20,10 @@ test("formatCheckResult reads as a verdict plus the errors", () => {
     "Fake check: The game loaded, but reported errors:\n- 404 assets/cat.png",
   );
   expect(formatCheckResult(target, { playable: false, errors: [] })).toContain("no error message");
+  expect(formatCheckResult(target, { playable: true, errors: [], screenshot: ".tempi/check.png" })).toBe(
+    "The Fake game loaded and ran without errors.\nScreenshot at the end of the check: .tempi/check.png",
+  );
+  expect(formatCheckResult(target, { playable: false, errors: ["boom"], screenshot: "s.png" })).toMatch(/- boom\nScreenshot at the end of the check: s\.png$/);
 });
 
 test("check_game runs the target's check on the workspace and returns text and details", async () => {

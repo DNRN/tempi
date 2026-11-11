@@ -29,7 +29,7 @@ In each game workspace tempi writes `.pi/settings.json` (keeps your pi extension
 
 ## Development
 
-Requires Node ≥ 22.
+Requires Node ≥ 22 and Google Chrome: the web target checks games in headless Chrome ([ADR 0007](docs/adr/0007-headless-web-check-with-playwright-and-installed-chrome.md)), and its tests run it.
 
 ```sh
 npm install

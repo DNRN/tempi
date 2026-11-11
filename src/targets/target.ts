@@ -15,6 +15,8 @@ export interface CheckResult {
   playable: boolean;
   /** Errors in the order they appeared: console errors, script errors, a missing entry file. */
   errors: string[];
+  /** A screenshot taken at the end of the check, relative to the workspace, when the target takes one. */
+  screenshot?: string;
 }
 
 /** A game started for the user to play. */
@@ -54,10 +56,11 @@ export interface Target {
 
 /** The check result as the agent reads it. */
 export function formatCheckResult(target: Target, result: CheckResult): string {
+  const screenshot = result.screenshot ? [`Screenshot at the end of the check: ${result.screenshot}`] : [];
   if (result.playable && result.errors.length === 0) {
-    return `The ${target.name} game loaded and ran without errors.`;
+    return [`The ${target.name} game loaded and ran without errors.`, ...screenshot].join("\n");
   }
   const lines = result.errors.length > 0 ? result.errors.map((e) => `- ${e}`) : ["- (no error message; the game did not start)"];
   const verdict = result.playable ? "The game loaded, but reported errors:" : "The game is not playable. Errors:";
-  return [`${target.name} check: ${verdict}`, ...lines].join("\n");
+  return [`${target.name} check: ${verdict}`, ...lines, ...screenshot].join("\n");
 }

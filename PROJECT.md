@@ -41,7 +41,7 @@ tempi is an AI harness for creating games, built on the pi agent (badlogic pi-mo
 | Language | TypeScript / Node | pi's SDK is TypeScript; no bridge layer |
 | Agent | pi agent (badlogic pi-mono) | The harness is built from it |
 | Bundled pi packages | pi-web-access, pi-subagents: pinned npm dependencies; tempi's sessions load only these, not the user's own pi packages ([ADR 0005](docs/adr/0005-bundle-pi-packages-as-pinned-npm-dependencies.md)) | Web lookups and delegation without setup; same behavior on every machine |
-| Game targets | Web (HTML5) and Godot (system binary, headless run/export) | Simplicity first; more engines later |
+| Game targets | Web (HTML5), checked in headless Google Chrome via Playwright ([ADR 0007](docs/adr/0007-headless-web-check-with-playwright-and-installed-chrome.md)), and Godot (system binary, headless run/export) | Simplicity first; more engines later |
 | Front end | open | CLI, TUI, or web UI not decided |
 | Hosting / distribution | open | Not discussed |
 | Licence | MIT | Public-facing tool |
