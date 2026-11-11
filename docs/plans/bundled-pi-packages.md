@@ -1,6 +1,6 @@
 # Plan: Bundled pi packages (web access, subagents)
 
-**Status.** Ready
+**Status.** Done
 
 ## Source
 
@@ -46,6 +46,7 @@ None. pi's built-in MCP stays.
 - **pi-subagents ships coding agents** (scout, reviewer, oracle, researcher, …), a skill, and prompts. Used as they are; game-specific agents are a later plan.
 - **Shared user config.** `web-search.json`, keys, and caches are the user's pi files; tempi's agent sees the same keys as the user's pi.
 - **Web access sends data out.** With no keys it searches through Exa's hosted MCP; fetched page content goes to hosted extractors only on explicit opt-in. Stated in the README.
+- **pi-subagents warns on every launch** that `defaultExtensions: []` disables all ambient extensions for the child. That is the intent, but the warning reaches the console. Follow-up when the CLI loop is built (slice step 7): filter it, or list the child extensions explicitly if that keeps workspaces portable.
 - **Size and supply chain.** 28 MB for the two packages (11 MB web access, 17 MB subagents); 234 MB `node_modules` together with the pi SDK. Both release often. Each bump is reviewed.
 - **Package roots can't be found with `require.resolve("<pkg>/package.json")`**: pi-subagents' `exports` hides it. Handled: walk `require.resolve.paths(name)` for a directory with `package.json`.
 
@@ -79,13 +80,13 @@ None.
 
 Agreed when the plan was approved, round 2.
 
-- [ ] `npm ci` installs both packages at exact versions; `npm ls @earendil-works/pi-coding-agent` shows one copy.
-- [ ] A tempi session registers `web_search`, `fetch_content`, and `subagent` (or `subagents_enable`), with no `pi install` and no change to `~/.pi/agent/settings.json`.
-- [ ] A pi package the user installed with `pi install` does not load in a tempi session.
-- [ ] The agent answers a question that needs a web search, in a tempi session.
-- [ ] The agent runs one foreground subagent and gets its result back; the child has `web_search` and no MCP tools.
-- [ ] Tests for package resolution and tool registration run in CI without API keys or network.
-- [ ] README lists what ships and where each package's config lives.
+- [x] `npm ci` installs both packages at exact versions; `npm ls @earendil-works/pi-coding-agent` shows one copy.
+- [x] A tempi session registers `web_search`, `fetch_content`, and `subagent` (or `subagents_enable`), with no `pi install` and no change to `~/.pi/agent/settings.json`.
+- [x] A pi package the user installed with `pi install` does not load in a tempi session.
+- [x] The agent answers a question that needs a web search, in a tempi session.
+- [x] The agent runs one foreground subagent and gets its result back; the child has `web_search` and no MCP tools.
+- [x] Tests for package resolution and tool registration run in CI without API keys or network.
+- [x] README lists what ships and where each package's config lives.
 
 ## Implementation steps
 
@@ -110,6 +111,10 @@ Part of vertical-slice step 3; step 1 here runs with the slice's spike (step 2).
 - Foreground subagent: `scout` ran and returned; its tools were `read, grep, find, ls, bash, write, contact_supervisor` (no web, no MCP). `researcher` without the host registration failed with "these child tools were unavailable: web_search, …"; with it, it searched and returned a sourced answer.
 - Background subagent: `researcher` with `async: true` ran in the detached runner, found tempi's pi SDK, searched the web, and `bg_wait` returned its result. With the workspace setting, its launch record showed `disableAmbientExtensions: true` and only pi-subagents' runtime plus pi-web-access loaded.
 - Packages ship compiled JS (`pi-web-access/dist`, `pi-subagents/bundle`), not only TypeScript. ADR 0005's reason for rejecting factory imports ("Node cannot import") is therefore wrong; path loading stays the decision, because it follows each package's `pi` manifest (skills, prompts) without tempi naming entry files.
+
+## Implementation
+
+Built 2026-11-11 with vertical-slice step 3: `src/packages.ts`, `src/workspace.ts`, `src/session.ts`, `src/prompts/system.ts` (short guidance on web lookups and delegation; the full prompts are slice step 9), with tests for each; a test observes the child registration through pi-subagents' own API. A session with no usable model fails with `NoModelError`: pi keeps a placeholder model instead of none, so tempi checks the model's provider for credentials. A live run of `createTempiSession` against the author's pi setup had a `researcher` subagent search the web and return a sourced answer.
 
 ## Refinement log
 

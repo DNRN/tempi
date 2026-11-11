@@ -17,7 +17,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "1.5.2"
+    "@earendil-works/pi-coding-agent": "1.5.2",
+    "pi-subagents": "0.88.0",
+    "pi-web-access": "0.47.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
