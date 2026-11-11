@@ -36,7 +36,7 @@ tempi's agent runs on the [pi SDK](https://github.com/earendil-works/pi) and shi
 | [pi-web-access](https://github.com/nicobailon/pi-web-access) | Web search and page fetching (`web_search`, `fetch_content`) | Works without keys through Exa's hosted search, so search queries leave your machine. Optional keys and providers in `~/.pi/agent/web-search.json`. |
 | [pi-subagents](https://github.com/nicobailon/pi-subagents) | Delegation to child agents (`subagent`), such as `researcher` and `reviewer` | Optional, in `~/.pi/agent/extensions/subagent/config.json`. Subagents whose role uses the web (such as `researcher`) get web access; no subagent gets MCP tools. |
 
-MCP servers (for generated assets) come from pi's own configuration: add them with `pi mcp add`. Models and logins also come from your pi setup (`pi`, then `/login`).
+MCP servers (for generated assets) come from pi's own configuration: add them with `pi mcp add`, with a `description` saying what they make (tempi passes it to the agent). tempi asks the agent to use them for the game's images, sounds, and 3D models (at most 6 per build, 3 per change) and to fall back to art drawn in code when a generator fails. A server's own defaults may need models you don't have installed, and a server that drives an app (such as Blender) needs that app running. Models and logins also come from your pi setup (`pi`, then `/login`).
 
 tempi's sessions do not load your own pi packages, extensions, skills, or prompts. A model provider that comes from one of your extensions is therefore not available in tempi.
 

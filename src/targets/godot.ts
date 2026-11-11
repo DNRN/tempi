@@ -18,10 +18,16 @@ const PROCESS_TIMEOUT_MS = 60_000;
 
 export const GODOT_INSTRUCTIONS = `Target: Godot 4 (GDScript). Build the game as a Godot project in the workspace root:
 - project.godot is already there; its run/main_scene is res://main.tscn. Write scenes (.tscn) and GDScript (.gd) as text files. No C#, no GDExtensions, no addons from the network.
-- 2D or 3D, whichever suits the idea. Placeholders: ColorRect/Polygon2D/draw calls in 2D, primitive meshes (BoxMesh, SphereMesh, CapsuleMesh) with a StandardMaterial3D in 3D. A 3D scene needs a Camera3D and a light.
+- Use 3D when the idea is about moving through space (rolling, driving, flying, a course or maze to get through) and 2D for flat ideas (side-on platformers, top-down puzzles, card games). Placeholders: ColorRect/Polygon2D/draw calls in 2D, primitive meshes (BoxMesh, SphereMesh, CapsuleMesh) with a StandardMaterial3D in 3D. A 3D scene needs a Camera3D and a light.
 - Assets live in assets/ and are loaded by res:// path (load("res://assets/ball.glb") gives a PackedScene to instantiate; images give a Texture2D, sounds an AudioStream). Godot imports them when check_game runs, so run it after adding assets.
 - Input: use the built-in ui_left, ui_right, ui_up, ui_down, ui_accept actions, or define your own actions in project.godot's [input] section. Show the controls on screen.
 - check_game imports the project, runs the main scene headless for a few seconds, presses the arrow keys, space, and enter and clicks the centre, and reports script errors, parse errors, and engine errors with file and line. It has no screenshot: headless Godot doesn't render.`;
+
+export const GODOT_ASSET_NOTES = `Using assets in the Godot game:
+- 3D models: GLB files. A 3D generator usually exports to a file path you choose: export to a path outside the workspace, then save_asset it into assets/. Load with load("res://assets/<name>.glb") as a PackedScene, instantiate it, and scale it to fit (check its size; generated models can be any scale). In a 3D game, use a generated model for the main object when a 3D generator is configured.
+- Images: Texture2D for Sprite2D, TextureRect, or a material's albedo_texture; scale the node, since generated images are often large (1024x1024). For a sprite without its background, ask the generator for a plain, flat background and make that colour transparent at load with Image (get_image, set_pixel alpha, ImageTexture.create_from_image).
+- Sounds: .wav or .ogg in an AudioStreamPlayer (AudioStreamPlayer3D in 3D) with stream = load("res://assets/<name>.wav").
+- Run check_game after saving assets: it imports them.`;
 
 const SCAFFOLD: Record<string, string> = {
   "project.godot": `; Engine configuration file.
@@ -159,6 +165,7 @@ export function createGodotTarget(options: GodotTargetOptions = {}): Target {
     id: "godot",
     name: "Godot 4",
     instructions: GODOT_INSTRUCTIONS,
+    assetNotes: GODOT_ASSET_NOTES,
 
     async prerequisites() {
       try {

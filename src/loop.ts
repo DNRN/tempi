@@ -1,5 +1,6 @@
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
+import type { AssetGenerator } from "./assets.js";
 import { buildPrompt, changePrompt, fixPrompt } from "./prompts/build.js";
 import { type CheckResult, formatCheckResult, type RunningGame, type Target } from "./targets/target.js";
 
@@ -10,6 +11,8 @@ export interface LoopAgent {
 
 export interface StartedAgent {
   agent: LoopAgent;
+  /** The MCP servers the agent can generate assets with. Default: none. */
+  assetGenerators?: AssetGenerator[];
   dispose(): void;
 }
 
@@ -74,7 +77,7 @@ export async function runCoCreation(options: CoCreationOptions): Promise<CoCreat
   if (problems.length > 0) throw new PrerequisiteError(target, problems);
 
   await target.scaffold(workspace);
-  const { agent, dispose } = await options.startAgent(workspace);
+  const { agent, dispose, assetGenerators = [] } = await options.startAgent(workspace);
   let running: RunningGame | undefined;
 
   /** One agent turn, then tempi's own check, with fix rounds while it fails. */
@@ -98,10 +101,15 @@ export async function runCoCreation(options: CoCreationOptions): Promise<CoCreat
   }
 
   try {
+    io.info(
+      assetGenerators.length > 0
+        ? `Asset generators: ${assetGenerators.map((g) => g.name).join(", ")}`
+        : "No asset generators configured: the game will use placeholder art. Add an image, sound, or 3D model generator with `pi mcp add` to get real assets.",
+    );
     io.info(`Building a ${target.name} game in ${workspace}`);
-    let lastCheck = await turn(buildPrompt(idea, target));
-    if (assetCount(workspace) === 0) {
-      io.info("No generated assets: the game uses placeholder art. Add an image or sound generator with `pi mcp add` to get real assets.");
+    let lastCheck = await turn(buildPrompt(idea, target, assetGenerators));
+    if (assetGenerators.length > 0 && assetCount(workspace) === 0) {
+      io.info("The agent generated no assets this time; the game uses placeholder art. Ask for generated art as a change if you want it.");
     }
     await play();
 
@@ -112,7 +120,7 @@ export async function runCoCreation(options: CoCreationOptions): Promise<CoCreat
       await running?.stop();
       running = undefined;
       io.info("Changing the game...");
-      lastCheck = await turn(changePrompt(request, target));
+      lastCheck = await turn(changePrompt(request, target, assetGenerators));
       changes += 1;
       await play();
     }

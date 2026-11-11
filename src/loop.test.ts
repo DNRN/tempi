@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import type { AssetGenerator } from "./assets.js";
 import { type LoopIO, PrerequisiteError, runCoCreation } from "./loop.js";
 import { createFakeTarget } from "./targets/fake-target.testutil.js";
 import type { CheckResult } from "./targets/target.js";
@@ -18,7 +19,7 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 /** A scripted user and agent that record what happens, in order. */
-function harness(answers: (string | undefined)[], checks: CheckResult[] = [CLEAN]) {
+function harness(answers: (string | undefined)[], checks: CheckResult[] = [CLEAN], assetGenerators?: AssetGenerator[]) {
   const fake = createFakeTarget(checks);
   const events: string[] = [];
   const prompts: string[] = [];
@@ -43,6 +44,7 @@ function harness(answers: (string | undefined)[], checks: CheckResult[] = [CLEAN
               events.push("prompt");
             },
           },
+          ...(assetGenerators ? { assetGenerators } : {}),
           dispose: () => void events.push("dispose"),
         };
       },
@@ -98,17 +100,28 @@ test("stops fixing after the limit, tells the user, and still starts the game", 
   expect(h.fake.calls).toContain(`run ${workspace}`);
 });
 
-test("says when the game has no generated assets, and not when it has", async () => {
+test("without generators, says the game uses placeholder art and how to get generators", async () => {
   const h = harness([""]);
   await h.run();
-  expect(h.info.some((m) => m.startsWith("No generated assets"))).toBe(true);
+  expect(h.info[0]).toMatch(/^No asset generators configured: .*pi mcp add/);
+  expect(h.prompts[0]).toContain("no asset generators are configured");
+});
+
+test("with generators, names them, passes them to the prompts, and says when none were used", async () => {
+  const generators = [{ name: "comfyui", description: "image generation", tools: 3 }];
+  const h = harness(["blue fish", ""], [CLEAN], generators);
+  await h.run();
+  expect(h.info[0]).toBe("Asset generators: comfyui");
+  expect(h.prompts[0]).toContain("- comfyui: image generation");
+  expect(h.prompts[1]).toContain("- comfyui: image generation");
+  expect(h.info.some((m) => m.startsWith("The agent generated no assets this time"))).toBe(true);
 
   rmSync(workspace, { recursive: true, force: true });
   mkdirSync(path.join(workspace, "assets"), { recursive: true });
   writeFileSync(path.join(workspace, "assets", "fish.png"), "x");
-  const withAssets = harness([""]);
+  const withAssets = harness([""], [CLEAN], generators);
   await withAssets.run();
-  expect(withAssets.info.some((m) => m.startsWith("No generated assets"))).toBe(false);
+  expect(withAssets.info.some((m) => m.startsWith("The agent generated no assets"))).toBe(false);
 });
 
 test("refuses to start when the target's prerequisites are missing", async () => {

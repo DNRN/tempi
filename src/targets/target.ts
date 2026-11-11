@@ -44,6 +44,8 @@ export interface Target {
    * layout, engine version, entry file, and how the playable check works.
    */
   readonly instructions: string;
+  /** How generated images, sounds, and models are used in this target: added to the asset guidance. */
+  readonly assetNotes: string;
   /** Problems that stop this target from running on this machine; empty when ready. */
   prerequisites(): Promise<string[]>;
   /** Puts the target's starting files into a new, empty workspace. */

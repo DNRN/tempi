@@ -11,6 +11,7 @@ export function createFakeTarget(checks: CheckResult[] = [{ playable: true, erro
     id: "web",
     name: "Fake",
     instructions: "Fake target instructions.",
+    assetNotes: "Fake asset notes.",
     async prerequisites() {
       calls.push("prerequisites");
       return [];

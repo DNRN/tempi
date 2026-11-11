@@ -22,6 +22,11 @@ export const WEB_INSTRUCTIONS = `Target: web (HTML5). Build the game as a static
 - Keyboard and mouse input. Show the controls on screen. Start sounds only after the player's first input: browsers block audio before it.
 - check_game serves the workspace on localhost, loads it in headless Chrome, presses the arrow keys, space, and enter and clicks the page centre, then reports uncaught exceptions, console errors, and failed requests, and saves a screenshot to .tempi/check.png (open it with read to see the game).`;
 
+export const WEB_ASSET_NOTES = `Using assets in the web game (2D only, no 3D models):
+- Images: load with new Image() from assets/ and draw them scaled to the size you need; generated images are often large (1024x1024).
+- Generated images usually have an opaque background. Ask the generator for a plain, flat background, then make it transparent at load: draw the image to an offscreen canvas, set the alpha of pixels close to the corner pixel's colour to 0, and draw from that canvas.
+- Sounds: .wav, .ogg, or .mp3 with new Audio() or the Web Audio API, started only after the player's first input.`;
+
 const SCAFFOLD: Record<string, string> = {
   "index.html": `<!doctype html>
 <html lang="en">
@@ -89,6 +94,7 @@ export function createWebTarget(options: WebTargetOptions = {}): Target {
     id: "web",
     name: "Web (HTML5)",
     instructions: WEB_INSTRUCTIONS,
+    assetNotes: WEB_ASSET_NOTES,
 
     async prerequisites() {
       try {

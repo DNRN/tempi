@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createInterface } from "node:readline/promises";
-import { ModelRuntime, resolveCliModel } from "@earendil-works/pi-coding-agent";
+import { getAgentDir, ModelRuntime, resolveCliModel } from "@earendil-works/pi-coding-agent";
+import { configuredMcpServerCount, waitForAssetGenerators } from "./assets.js";
 import { parseCliArgs, USAGE } from "./cli-args.js";
 import { type LoopIO, runCoCreation } from "./loop.js";
 import { createProgressPrinter } from "./progress.js";
@@ -92,9 +93,12 @@ async function main(argv: string[]): Promise<number> {
         for (const error of tempi.extensionErrors) io.info(`Extension problem (${error.extensionPath}): ${error.error}`);
         const active = tempi.session.model;
         if (active) io.info(`Model: ${active.provider}/${active.id}`);
+        // pi connects MCP servers in the background; wait for them so the prompts can name them.
+        const assetGenerators = await waitForAssetGenerators(() => tempi.session.getAllTools(), configuredMcpServerCount(getAgentDir()));
         const unsubscribe = tempi.session.subscribe((event) => progress.onEvent(event));
         return {
           agent: { prompt: (text) => tempi.session.prompt(text) },
+          assetGenerators,
           dispose() {
             unsubscribe();
             tempi.dispose();
