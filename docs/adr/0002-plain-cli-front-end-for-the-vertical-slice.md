@@ -3,7 +3,7 @@
 Date: 2026-11-10
 
 ## Status
-Accepted
+Superseded by [0008](0008-pi-interactive-tui-as-tempis-front-end.md)
 
 Decided by the user in round 1 of [the vertical-slice plan](../plans/vertical-slice.md).
 

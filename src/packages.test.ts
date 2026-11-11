@@ -12,14 +12,33 @@ describe("bundled packages tempi ships", () => {
     }
   });
 
-  test("give the loader each package root, the manifest's skills and prompts, and web access for children", () => {
+  test("give the loader each package root, and web access for children; a root's skills and prompts come with it, not as paths", () => {
     const resources = bundledResources();
     expect(resources.extensionPaths.map((p) => path.basename(p))).toEqual(["pi-web-access", "pi-subagents"]);
-    expect(resources.skillPaths).toEqual([path.join(resolvePackageRoot("pi-subagents"), "skills")]);
-    expect(resources.promptPaths).toEqual([path.join(resolvePackageRoot("pi-subagents"), "prompts")]);
+    // pi-subagents has extensions, so its root loads with its manifest: passing
+    // its skills and prompts as paths too would load them twice (ADR 0009).
+    expect(resources.skillPaths).toEqual([]);
+    expect(resources.promptPaths).toEqual([]);
     expect(resources.childExtensions).toEqual([
       { id: "pi-web-access", path: path.join(resolvePackageRoot("pi-web-access"), "dist", "index.js") },
     ]);
+  });
+
+  test("pass a package's skill and prompt paths only when it has no extensions", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "tempi-packages-"));
+    try {
+      const root = path.join(dir, "node_modules", "docs-only");
+      mkdirSync(root, { recursive: true });
+      writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "docs-only", pi: { skills: ["./skills"], prompts: ["./prompts"] } }));
+      mkdirSync(path.join(root, "skills"), { recursive: true });
+      mkdirSync(path.join(root, "prompts"), { recursive: true });
+      const resources = bundledResources([{ name: "docs-only", inChildren: false }], pathToFileURL(path.join(dir, "index.js")).href);
+      expect(resources.extensionPaths).toEqual([]);
+      expect(resources.skillPaths).toEqual([path.join(root, "skills")]);
+      expect(resources.promptPaths).toEqual([path.join(root, "prompts")]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

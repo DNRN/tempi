@@ -4,7 +4,7 @@ tempi is an AI harness for co-creating playable games, built on the [pi agent](h
 
 ## Status
 
-Early development: the first milestone's co-creation loop runs end to end for both targets, web and Godot, with or without generated assets from your MCP servers ([plan](docs/plans/vertical-slice.md)).
+Early development: the co-creation loop runs end to end for both targets, web and Godot, with or without generated assets from your MCP servers, behind pi's own chat interface ([ADR 0008](docs/adr/0008-pi-interactive-tui-as-tempis-front-end.md), [plan](docs/plans/pi-tui-front-end.md)); a plain line-by-line mode remains for piped and scripted runs.
 
 See [PROJECT.md](PROJECT.md) for purpose, scope, and open decisions, and [docs/adr/](docs/adr/) for architecture decisions.
 
@@ -28,18 +28,24 @@ See [PROJECT.md](PROJECT.md) for purpose, scope, and open decisions, and [docs/a
 ```sh
 node dist/cli.js "a cat catches falling fish"
 node dist/cli.js --target godot "roll a ball through a small obstacle course"
+node dist/cli.js            # opens the chat; your first message is the idea
 ```
 
-tempi creates a folder for the game (named after the idea), builds a first version with the agent, checks it (headless Chrome for web, headless Godot for Godot), and opens it: in your browser, or in a Godot window. Then it asks what to change: type a change to rebuild, or press Enter to finish.
+tempi opens pi's chat interface ([ADR 0008](docs/adr/0008-pi-interactive-tui-as-tempis-front-end.md)) running its game-building agent: streaming output, tool calls, `/model`, `/login`, interrupt, and session history work as in pi. With an idea, tempi creates a folder for the game (named after the idea), builds a first version with the agent, checks it (headless Chrome for web, headless Godot for Godot), and opens it: in your browser, or in a Godot window. Without one, your first message in the chat is the idea. After each turn that changes the game, tempi checks it again, asks the agent to fix what the check finds, and restarts it; a turn that only answers a question doesn't. `/play` and `/check` start the game and run the check on demand.
+
+Your messages reach the agent as typed: a change request, or a question about the game. tempi's guidance (the target's rules, assets, budgets) lives in the system prompt instead of wrapping each message.
 
 ```
-tempi [options] "<game idea>"
+tempi [options] ["<game idea>"]
   -t, --target <web|godot>  game target (default: web)
   -o, --out <dir>           workspace directory (default: a new folder named after the idea)
   -m, --model <pattern>     model, as for pi --model (default: pi's default model)
+      --plain               plain question-and-answer loop instead of the chat interface
       --no-open             don't open the game; print where it is or how to play it
       --no-mcp              don't connect pi's MCP servers: no asset generators, art drawn in code
 ```
+
+The plain loop is also chosen automatically when input is piped (`echo "make the fish faster" | node dist/cli.js "a cat game"`), and asks line by line what should change. Before the idea is known, the chat runs in a temporary session; the first message creates the game folder and moves the session there.
 
 ## What ships with tempi
 
@@ -54,7 +60,7 @@ MCP servers (for generated assets) come from pi's own configuration: add them wi
 
 tempi's sessions do not load your own pi packages, extensions, skills, or prompts. A model provider that comes from one of your extensions is therefore not available in tempi.
 
-In each game workspace tempi writes `.pi/settings.json` (keeps your pi extensions out of background subagents) and keeps its session history in `.tempi/sessions/`.
+In each game workspace tempi writes `.pi/settings.json` (keeps your pi extensions out of background subagents) and keeps its session history in `.tempi/sessions/`, so `pi` opened in the folder can resume it.
 
 ## Development
 
@@ -62,7 +68,7 @@ Requires Node ≥ 22, Google Chrome, and Godot 4 (`godot` on PATH): the targets 
 
 ```sh
 npm install
-npm test        # vitest, including end-to-end smoke tests per target with a scripted model
+npm test        # vitest: unit tests, end-to-end per target with a scripted model, and a TUI smoke test
 npm run test:local-mcp   # end-to-end with your own ComfyUI MCP server (uses the GPU)
 npm run typecheck
 npm run build   # tsc → dist/
