@@ -10,6 +10,7 @@ import {
   type ModelRuntime,
   SessionManager,
   SettingsManager,
+  type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { registerRequiredChildExtensions } from "pi-subagents/required-child-extensions";
 import { type BundledResources, bundledResources } from "./packages.js";
@@ -30,6 +31,8 @@ export interface TempiSessionOptions {
   sessionManager?: SessionManager;
   /** Default: the packages tempi ships. */
   resources?: BundledResources;
+  /** tempi's own tools for this session, such as the target's `check_game`. */
+  customTools?: ToolDefinition[];
 }
 
 export interface TempiSession {
@@ -86,6 +89,7 @@ export async function createTempiSession(options: TempiSessionOptions): Promise<
     modelRuntime: options.modelRuntime,
     model: options.model,
     resourceLoader,
+    customTools: options.customTools,
     settingsManager: SettingsManager.create(workspace, agentDir),
     sessionManager: options.sessionManager ?? SessionManager.create(workspace, sessionDir(workspace)),
   });

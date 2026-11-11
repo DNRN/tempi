@@ -5,6 +5,8 @@ import { ModelRuntime, SessionManager } from "@earendil-works/pi-coding-agent";
 import { registerRequiredChildExtensions } from "pi-subagents/required-child-extensions";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { createTempiSession, NoModelError, type TempiSession } from "./session.js";
+import { createCheckGameTool } from "./targets/check-tool.js";
+import { createFakeTarget } from "./targets/fake-target.testutil.js";
 
 // Each test gets its own pi agent dir, so the user's ~/.pi/agent (models, auth,
 // MCP servers, installed packages) is never read and no network is needed.
@@ -48,6 +50,18 @@ test("registers the bundled tools and pi's codemode, and writes the workspace se
   expect(tools).toEqual(expect.arrayContaining(["web_search", "fetch_content", "web_enable", "subagent", "subagents_enable", "codemode", "tool_search"]));
   expect(opened.extensionErrors).toEqual([]);
   expect(JSON.parse(readFileSync(path.join(workspace, ".pi", "settings.json"), "utf8"))).toEqual({ subagents: { defaultExtensions: [] } });
+}, 60_000);
+
+test("registers tempi's own tools, such as the target's check_game", async () => {
+  const { target } = createFakeTarget();
+  opened = await createTempiSession({
+    workspace,
+    agentDir,
+    ...(await runtimeWithModel()),
+    sessionManager: SessionManager.inMemory(workspace),
+    customTools: [createCheckGameTool(target, workspace)],
+  });
+  expect(opened.session.getActiveToolNames()).toContain("check_game");
 }, 60_000);
 
 test("adds tempi's system prompt to pi's", async () => {
