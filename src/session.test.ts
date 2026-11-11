@@ -64,6 +64,16 @@ test("registers tempi's own tools, such as the target's check_game", async () =>
   expect(opened.session.getActiveToolNames()).toContain("check_game");
 }, 60_000);
 
+test.each([
+  [true, true],
+  [false, false],
+])("with mcp: %s, pi's MCP extension (its /mcp command) is loaded: %s", async (mcp, loaded) => {
+  opened = await createTempiSession({ workspace, agentDir, ...(await runtimeWithModel()), sessionManager: SessionManager.inMemory(workspace), mcp });
+  const commands = opened.session.extensionRunner.getRegisteredCommands().map((c) => c.name);
+  expect(commands.includes("mcp")).toBe(loaded);
+  expect(opened.session.getAllTools().map((t) => t.name)).toContain("codemode");
+}, 60_000);
+
 test("adds tempi's system prompt to pi's", async () => {
   opened = await createTempiSession({ workspace, agentDir, ...(await runtimeWithModel()), sessionManager: SessionManager.inMemory(workspace) });
   expect(opened.session.systemPrompt).toContain("tempi's game-building agent");

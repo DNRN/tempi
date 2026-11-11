@@ -14,6 +14,8 @@ export interface StartTempiAgentOptions {
   modelRuntime?: ModelRuntime;
   model?: NonNullable<AgentSession["model"]>;
   thinkingLevel?: AgentSession["thinkingLevel"];
+  /** Connect the MCP servers from pi's mcp.json (asset generators). Default true. */
+  mcp?: boolean;
   /** Every session event, for progress output. */
   onEvent?: (event: AgentSessionEvent) => void;
   /** Called once the session runs, with the model and extension problems. */
@@ -34,13 +36,15 @@ export async function startTempiAgent(options: StartTempiAgentOptions): Promise<
     modelRuntime: options.modelRuntime,
     model: options.model,
     thinkingLevel: options.thinkingLevel,
+    mcp: options.mcp,
     customTools: [createCheckGameTool(target, workspace), createSaveAssetTool(workspace)],
   });
   try {
     const active = tempi.session.model;
     options.onStart?.({ ...(active ? { model: `${active.provider}/${active.id}` } : {}), extensionErrors: tempi.extensionErrors });
     // pi connects MCP servers in the background; wait for them so the prompts can name them.
-    const assetGenerators = await waitForAssetGenerators(() => tempi.session.getAllTools(), configuredMcpServerCount(agentDir));
+    const assetGenerators =
+      options.mcp === false ? [] : await waitForAssetGenerators(() => tempi.session.getAllTools(), configuredMcpServerCount(agentDir));
     const unsubscribe = options.onEvent ? tempi.session.subscribe(options.onEvent) : () => {};
     return {
       session: tempi.session,

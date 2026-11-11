@@ -9,16 +9,26 @@ const WORKING_RULES = `How to work:
 - Run check_game after your changes and fix everything it reports. Finish only when it reports no errors.
 - End with two or three lines for the player: what the game is and its controls.`;
 
+/**
+ * Sound effects: simple game sounds are synthesized in code, realistic ones
+ * come from a sound generator when there is one (decided for the first milestone).
+ */
+const SOUND_RULES = `- Sound: synthesize simple game sounds (coins, jumps, hits, explosions, blips, power-ups) in code: write a short WAV into assets/ with a Python script using only the standard library (wave, struct, math), or in a web game play it with the Web Audio API. Synthesized sounds don't count against the budget.`;
+
 /** What the agent should do about art, sound, and models, given the generators the user configured. */
 export function assetGuidance(generators: readonly AssetGenerator[], target: Target, budget: number): string {
   if (generators.length === 0) {
-    return `Assets: no asset generators are configured, so draw all art in code (shapes, colours, simple patterns) and skip sound files.`;
+    return `Assets: no asset generators are configured, so draw all art in code (shapes, colours, simple patterns).
+${SOUND_RULES}`;
   }
   const list = generators.map((g) => `- ${g.name}${g.description ? `: ${g.description}` : ""}`).join("\n");
   return `Assets: the user set up these asset generators (MCP servers) for tempi's games. Use them for the game's art, sound, and models instead of placeholders:
 ${list}
 - Call their tools from a codemode script (tools.mcp__<server>__<tool>; find them with searchTools or describeNamespace), and pass each result straight to tools.save_asset in the same script: a file path, base64 data, or a URL.
-- Budget: at most ${budget} generated assets in this turn. Generate the ones that matter most (the player, the main objects, one or two sounds) and draw the rest in code; reuse an asset where you can.
+- A generator that drives an app the user has open (such as Blender) works in the user's own session: don't change what is already there. Build in a new temporary scene, export to a file, then delete that scene and everything you created for it (objects, meshes, materials). Export first and save_asset after the export has finished, not in parallel.
+- A generator may do more than its description says. Before you decide none can make an asset (a sound, a 3D model), search their tools and templates for that kind (sound, audio, sfx, model, mesh).
+- Budget: at most ${budget} generated assets in this turn. Generate the ones that matter most (the player, the main objects, a realistic sound) and draw the rest in code; reuse an asset where you can.
+${SOUND_RULES} Use a sound generator for realistic sounds (animals, water, voices, ambience); save its output as .wav, .ogg, or .mp3.
 - If a generator fails or can't make what you need, use a placeholder for that asset and carry on: the game must be playable either way.
 ${target.assetNotes}`;
 }

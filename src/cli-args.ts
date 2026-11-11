@@ -12,13 +12,14 @@ Options:
   -o, --out <dir>          workspace directory (default: a new folder named after the idea)
   -m, --model <pattern>    model, as for pi --model (default: pi's default model)
       --no-open            don't open the game; print where it is or how to play it
+      --no-mcp             don't connect pi's MCP servers: no asset generators, art drawn in code
   -h, --help               show this help
   -v, --version            show tempi's version`;
 
 export type CliCommand =
   | { kind: "help" }
   | { kind: "version" }
-  | { kind: "create"; idea: string; target: TargetId; out?: string; model?: string; open: boolean };
+  | { kind: "create"; idea: string; target: TargetId; out?: string; model?: string; open: boolean; mcp: boolean };
 
 /** Parses tempi's command line. Throws with a message for the user on bad input. */
 export function parseCliArgs(argv: string[]): CliCommand {
@@ -30,6 +31,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
       out: { type: "string", short: "o" },
       model: { type: "string", short: "m" },
       "no-open": { type: "boolean" },
+      "no-mcp": { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
@@ -45,5 +47,6 @@ export function parseCliArgs(argv: string[]): CliCommand {
     ...(values.out ? { out: values.out } : {}),
     ...(values.model ? { model: values.model } : {}),
     open: !values["no-open"],
+    mcp: !values["no-mcp"],
   };
 }

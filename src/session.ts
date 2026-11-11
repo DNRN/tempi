@@ -34,6 +34,8 @@ export interface TempiSessionOptions {
   resources?: BundledResources;
   /** tempi's own tools for this session, such as the target's `check_game`. */
   customTools?: ToolDefinition[];
+  /** Connect the MCP servers from pi's mcp.json. Default true. */
+  mcp?: boolean;
 }
 
 export interface TempiSession {
@@ -75,7 +77,7 @@ export async function createTempiSession(options: TempiSessionOptions): Promise<
     additionalExtensionPaths: resources.extensionPaths,
     additionalSkillPaths: resources.skillPaths,
     additionalPromptTemplatePaths: resources.promptPaths,
-    extensionFactories: [createCodemodeExtension(), createToolSearchExtension(), createMcpExtension()],
+    extensionFactories: [createCodemodeExtension(), createToolSearchExtension(), ...(options.mcp === false ? [] : [createMcpExtension()])],
     appendSystemPrompt: [TEMPI_SYSTEM_PROMPT],
   });
   await resourceLoader.reload();

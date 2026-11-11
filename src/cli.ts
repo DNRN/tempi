@@ -86,6 +86,7 @@ async function main(argv: string[]): Promise<number> {
           modelRuntime,
           model,
           thinkingLevel,
+          mcp: command.mcp,
           onEvent: (event) => progress.onEvent(event),
           onStart({ model: active, extensionErrors }) {
             for (const error of extensionErrors) io.info(`Extension problem (${error.extensionPath}): ${error.error}`);

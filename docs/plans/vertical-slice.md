@@ -53,6 +53,8 @@ None. Nothing exists to replace.
 - Asset kinds in the slice: images/sprites, sound effects, 3D models. Music is out: user, round 1.
 - The target is chosen per game with a `--target web|godot` flag; the agent choosing the engine stays later work: user, round 2.
 - Without `--target`, the target is `web`: user, during step 7.
+- Sound effects: simple game sounds are synthesized in code (a WAV from a standard-library Python script, or Web Audio), realistic ones come from a sound generator when one is configured; the acceptance criterion counts either: user, step 12.
+- Acceptance runs use the user's default model, `anthropic/claude-opus-5-5`: user, step 12.
 - 3D games and generated 3D models apply to the Godot target only; web stays 2D with sprites and sound effects: user, round 2.
 - Acceptance runs: web 2D, "a cat catches falling fish"; Godot 3D, "roll a ball through a small obstacle course": user, round 2.
 - tempi's sessions load pi's MCP, codemode, and tool-search extensions through the resource loader: [ADR 0004](../adr/0004-load-pis-mcp-extensions-in-tempi-sessions.md), Accepted.
@@ -78,11 +80,11 @@ Non-blocking:
 Proposed; agreed when the plan is approved.
 
 - [ ] `tempi "<one-line idea>"` produces a game in a fresh workspace and starts it; the game is playable. Holds for the web target (opens in the browser) and the Godot target (runs with the system `godot`).
-- [ ] `tempi --target web|godot` selects the target.
-- [ ] With MCP servers added through `pi mcp add`: the web run ("a cat catches falling fish") uses at least one generated sprite and one generated sound effect, and the Godot run ("roll a ball through a small obstacle course") uses at least one generated 3D model, all stored under the workspace's `assets/`.
-- [ ] With no MCP server configured, the loop still completes with placeholder art, and tempi says assets were skipped.
-- [ ] One typed change request produces a new playable version in the same workspace, on each target.
-- [ ] Neither step needs a manual edit of generated code.
+- [x] `tempi --target web|godot` selects the target.
+- [x] With MCP servers added through `pi mcp add`: the web run ("a cat catches falling fish") uses at least one generated sprite and one sound effect, generated or synthesized in code (user, step 12), and the Godot run ("roll a ball through a small obstacle course") uses at least one generated 3D model, all stored under the workspace's `assets/`.
+- [x] With no MCP server configured, the loop still completes with placeholder art, and tempi says assets were skipped.
+- [x] One typed change request produces a new playable version in the same workspace, on each target.
+- [x] Neither step needs a manual edit of generated code.
 - [ ] Tests run in CI on push without API keys.
 
 ## Implementation steps
@@ -102,6 +104,12 @@ Proposed; agreed when the plan is approved.
 10. Tests: unit tests per module; an end-to-end smoke test per target with a stubbed model and a stub MCP server (the Godot one skipped where `godot` is absent, installed in CI). Done 2026-11-11: `src/e2e.test.ts` runs the whole loop per target as the CLI does (`startTempiAgent` in `src/agent.ts`, shared with the CLI), with a scripted model (pi-ai's faux provider) and an empty pi agent dir, so CI needs no keys: web goes through a broken build, tempi's fix round, a change, and finish; Godot through a build, a change, and finish. Instead of a stub MCP server, the user chose the local ComfyUI server for asset generation: `src/e2e-local-mcp.test.ts` (`npm run test:local-mcp`, only with `TEMPI_LOCAL_MCP=1`) has the scripted agent generate an image through codemode, save it with `save_asset`, and build a web and a Godot game that use it, both passing the check. Blender was not needed for these.
 11. Docs: README (setup, `pi mcp add` example), PROJECT.md updates. Done 2026-11-11, in the same change as step 10: README setup (model, engines, a `pi mcp add` example with `--description`) and usage for both targets; PROJECT.md's front end, game targets, and game assets rows.
 12. Acceptance runs on the fixed ideas, per target, with and without MCP servers; record manual fixes needed (target: zero).
+
+    Runs on 2026-11-11 with `anthropic/claude-opus-5-5`, with the user's MCP servers (comfyui, blender), each with one change request, no manual edits:
+    - Web, "a cat catches falling fish": 4 comfyui images (cat, fish, can, kitchen background), synthesized Web Audio sounds; the change ("add a short cat meow…, make the fish fall a bit faster") made the agent find comfyui's Stable Audio template by searching, generate a meow, convert it to WAV, and save it. Check clean after both turns. An earlier run, before the prompt asked agents to search a generator's templates before giving up, missed the audio template and synthesized the sound instead.
+    - Godot, "roll a ball through a small obstacle course": built in 3D with two Blender GLB models (ball, goal flag) and a comfyui floor texture, five synthesized WAV sounds; the change ("play a sound when the ball reaches the finish, and add one more obstacle") added piston gates and a fanfare. Check clean after both turns. The agent built its models in the user's open Blender scene and left unused meshes and materials behind (removed afterwards); the asset guidance now asks for a temporary scene that is deleted after export.
+    - Without MCP servers (`--no-mcp`, added for these runs): web drew a night-city scene, cat, and fish in code and checked clean; the change added a synthesized catch sound and faster fish. Godot built a 3D course from primitives with six synthesized sounds; the change added a swinging hammer and a fanfare. tempi said up front that no generators were configured. Both checks clean after both turns.
+    - Not observed live: opening the game in the browser or a Godot window (all runs used `--no-open`; both are covered by tests with a stand-in opener and a stand-in `godot`). CI has not run the new steps yet: the commits are not pushed.
 
 ## Refinement log
 

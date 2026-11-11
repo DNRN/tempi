@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { parseCliArgs } from "./cli-args.js";
 
 test("an idea alone builds for the default target, web", () => {
-  expect(parseCliArgs(["a cat catches falling fish"])).toEqual({ kind: "create", idea: "a cat catches falling fish", target: "web", open: true });
+  expect(parseCliArgs(["a cat catches falling fish"])).toEqual({ kind: "create", idea: "a cat catches falling fish", target: "web", open: true, mcp: true });
 });
 
 test("unquoted words form the idea; options take target, out, and model", () => {
@@ -13,8 +13,10 @@ test("unquoted words form the idea; options take target, out, and model", () => 
     out: "roll",
     model: "anthropic/claude-haiku-5-5",
     open: true,
+    mcp: true,
   });
-  expect(parseCliArgs(["--no-open", "x"])).toMatchObject({ open: false });
+  expect(parseCliArgs(["--no-open", "x"])).toMatchObject({ open: false, mcp: true });
+  expect(parseCliArgs(["--no-mcp", "x"])).toMatchObject({ open: true, mcp: false });
 });
 
 test("help and version need no idea", () => {

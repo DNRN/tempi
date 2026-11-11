@@ -18,11 +18,17 @@ test("with generators, the guidance names them, says how to save, sets the budge
   expect(text).toContain("at most 6 generated assets");
   expect(text).toContain("use a placeholder for that asset and carry on");
   expect(text).toContain("Fake asset notes.");
+  expect(text).toContain("search their tools and templates for that kind");
+  expect(text).toContain("synthesize simple game sounds");
+  expect(text).toContain("Use a sound generator for realistic sounds");
+  expect(text).toContain("Build in a new temporary scene, export to a file, then delete that scene and everything you created for it");
 });
 
 test("without generators, the guidance asks for art drawn in code and leaves out the target's notes", () => {
   const text = assetGuidance([], target, 6);
   expect(text).toMatch(/no asset generators are configured, so draw all art in code/);
+  expect(text).toContain("synthesize simple game sounds");
+  expect(text).not.toContain("sound generator");
   expect(text).not.toContain("Fake asset notes.");
 });
 
