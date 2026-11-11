@@ -95,6 +95,7 @@ interface GodotRun {
 }
 
 function runGodot(godot: string, args: string[], signal?: AbortSignal): Promise<GodotRun> {
+  if (signal?.aborted) return Promise.reject(new Error("The check was cancelled."));
   return new Promise((resolve, reject) => {
     const child = spawn(godot, args, { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NO_COLOR: "1" } });
     let output = "";

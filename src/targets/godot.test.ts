@@ -130,6 +130,16 @@ describe("check with Godot", () => {
     expect(readFileSync(path.join(workspace, "override.cfg"), "utf8")).toBe('[display]\n\nwindow/size/viewport_width=640\n');
   }, 60_000);
 
+  test.each([0, 300, 2000])("a check cancelled after %i ms rejects as cancelled", async (delay) => {
+    await target.scaffold(workspace);
+    const controller = new AbortController();
+    if (delay === 0) controller.abort();
+    const checking = target.check(workspace, { signal: controller.signal });
+    if (delay > 0) setTimeout(() => controller.abort(), delay);
+    await expect(checking).rejects.toThrow("The check was cancelled.");
+    expect(existsSync(path.join(workspace, "override.cfg"))).toBe(false);
+  }, 60_000);
+
   test("a 3D scene with primitive meshes is playable", async () => {
     await target.scaffold(workspace);
     writeFileSync(

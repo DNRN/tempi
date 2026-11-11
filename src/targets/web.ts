@@ -121,6 +121,7 @@ export function createWebTarget(options: WebTargetOptions = {}): Target {
       if (!existsSync(path.join(workspace, "index.html"))) {
         return { playable: false, errors: ["index.html is missing from the workspace root."] };
       }
+      if (checkOptions.signal?.aborted) throw new Error("The check was cancelled.");
       const errors: string[] = [];
       let uncaught = false;
       const server = await serveDirectory(workspace);
@@ -131,6 +132,8 @@ export function createWebTarget(options: WebTargetOptions = {}): Target {
         browser = await launchChrome().catch(() => {
           throw new Error(CHROME_MISSING);
         });
+        // A cancel that came while Chrome was starting had no browser to close yet.
+        if (checkOptions.signal?.aborted) throw new Error("The check was cancelled.");
         const page = await browser.newPage({ viewport: { width: 1024, height: 768 } });
         page.on("pageerror", (error) => {
           uncaught = true;
@@ -153,6 +156,8 @@ export function createWebTarget(options: WebTargetOptions = {}): Target {
         try {
           await page.goto(server.url, { waitUntil: "load", timeout: 15_000 });
         } catch (error) {
+          // Cancelling closes the browser, which makes the load fail: report the cancellation, not a load error.
+          if (checkOptions.signal?.aborted) throw new Error("The check was cancelled.");
           errors.push(`The page did not load: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
           return { playable: false, errors };
         }

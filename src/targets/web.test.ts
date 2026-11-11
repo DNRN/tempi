@@ -78,12 +78,13 @@ describe("check in headless Chrome", () => {
     expect(result.errors).toHaveLength(2);
   }, 30_000);
 
-  test("a cancelled check stops", async () => {
+  // Cancelling at different moments hits different steps: launching Chrome, loading the page, the run.
+  test.each([0, 50, 150, 300, 800])("a check cancelled after %i ms rejects as cancelled", async (delay) => {
     await target.scaffold(workspace);
     const controller = new AbortController();
     const checking = target.check(workspace, { signal: controller.signal });
-    setTimeout(() => controller.abort(), 300);
-    await expect(checking).rejects.toThrow();
+    setTimeout(() => controller.abort(), delay);
+    await expect(checking).rejects.toThrow("The check was cancelled.");
   }, 30_000);
 });
 
