@@ -5,9 +5,11 @@ import { type CheckResult, formatCheckResult, type Target } from "../targets/tar
 export const ASSET_BUDGET = { build: 6, change: 3 } as const;
 
 const WORKING_RULES = `How to work:
+- When the workspace holds only the target's starting files, there is no game yet: the user's next message is the idea for a new game. Build a playable first version of it now.
+- The user's other messages are change requests or questions about the game. For a question, answer it and leave the game's files alone. For a change, change the game in this workspace and keep what already works; keep existing assets unless the change needs new ones.
 - Keep the game small: one screen or level, a clear goal, simple controls. It must be playable now, not later.
-- Run check_game after your changes and fix everything it reports. Finish only when it reports no errors.
-- End with two or three lines for the player: what the game is and its controls.`;
+- After changing the game, run check_game and fix everything it reports. Finish only when it reports no errors. tempi checks the game again after your turn and starts it for the user.
+- After a build or a change, end with two or three lines for the player: what the game is (or what changed) and its controls.`;
 
 /**
  * Sound effects: simple game sounds are synthesized in code, realistic ones
@@ -16,7 +18,7 @@ const WORKING_RULES = `How to work:
 const SOUND_RULES = `- Sound: synthesize simple game sounds (coins, jumps, hits, explosions, blips, power-ups) in code: write a short WAV into assets/ with a Python script using only the standard library (wave, struct, math), or in a web game play it with the Web Audio API. Synthesized sounds don't count against the budget.`;
 
 /** What the agent should do about art, sound, and models, given the generators the user configured. */
-export function assetGuidance(generators: readonly AssetGenerator[], target: Target, budget: number): string {
+export function assetGuidance(generators: readonly AssetGenerator[], target: Target): string {
   if (generators.length === 0) {
     return `Assets: no asset generators are configured, so draw all art in code (shapes, colours, simple patterns).
 ${SOUND_RULES}`;
@@ -27,30 +29,20 @@ ${list}
 - Call their tools from a codemode script (tools.mcp__<server>__<tool>; find them with searchTools or describeNamespace), and pass each result straight to tools.save_asset in the same script: a file path, base64 data, or a URL.
 - A generator that drives an app the user has open (such as Blender) works in the user's own session: don't change what is already there. Build in a new temporary scene, export to a file, then delete that scene and everything you created for it (objects, meshes, materials). Export first and save_asset after the export has finished, not in parallel.
 - A generator may do more than its description says. Before you decide none can make an asset (a sound, a 3D model), search their tools and templates for that kind (sound, audio, sfx, model, mesh).
-- Budget: at most ${budget} generated assets in this turn. Generate the ones that matter most (the player, the main objects, a realistic sound) and draw the rest in code; reuse an asset where you can.
+- Budget: at most ${ASSET_BUDGET.change} generated assets per turn, ${ASSET_BUDGET.build} for the first build. Generate the ones that matter most (the player, the main objects, a realistic sound) and draw the rest in code; reuse an asset where you can.
 ${SOUND_RULES} Use a sound generator for realistic sounds (animals, water, voices, ambience); save its output as .wav, .ogg, or .mp3.
 - If a generator fails or can't make what you need, use a placeholder for that asset and carry on: the game must be playable either way.
 ${target.assetNotes}`;
 }
 
-/** The first prompt: build a playable game from the user's idea. */
-export function buildPrompt(idea: string, target: Target, generators: readonly AssetGenerator[] = []): string {
-  return `${target.instructions}
-
-Build this game: ${idea.trim()}
-
-${assetGuidance(generators, target, ASSET_BUDGET.build)}
-
-${WORKING_RULES}`;
-}
-
-/** A change request from the user after they played the game. */
-export function changePrompt(request: string, target: Target, generators: readonly AssetGenerator[] = []): string {
-  return `The player tried the game and asks for this change: ${request.trim()}
-
-Change the game in this workspace accordingly; keep what already works. ${target.name} rules from before still apply. Keep existing assets unless the change needs new ones.
-
-${assetGuidance(generators, target, ASSET_BUDGET.change)}
+/**
+ * The static part of tempi's game guidance for the system prompt: the target's
+ * rules and how to work. The asset guidance is appended per turn, once the
+ * MCP servers have connected, because it depends on which are configured.
+ */
+export function targetGuidance(target: Target): string {
+  return `Game target: ${target.name}.
+${target.instructions}
 
 ${WORKING_RULES}`;
 }

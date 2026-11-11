@@ -1,10 +1,22 @@
-import { type AgentSession, type AgentSessionEvent, type ExtensionError, getAgentDir, type ModelRuntime } from "@earendil-works/pi-coding-agent";
-import { configuredMcpServerCount, waitForAssetGenerators } from "./assets.js";
-import type { StartedAgent } from "./loop.js";
+import { type AgentSession, type AgentSessionEvent, type ExtensionError, type ExtensionFactory, getAgentDir, type ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { type AssetGenerator, configuredMcpServerCount, waitForAssetGenerators } from "./assets.js";
 import { createTempiSession } from "./session.js";
 import { createCheckGameTool } from "./targets/check-tool.js";
 import type { Target } from "./targets/target.js";
 import { createSaveAssetTool } from "./tools/save-asset.js";
+
+/** How a front end drives the agent: one prompt per turn. */
+export interface LoopAgent {
+  prompt(text: string): Promise<void>;
+}
+
+/** A started tempi agent, as the plain loop uses it. */
+export interface StartedAgent {
+  agent: LoopAgent;
+  /** The MCP servers the agent can generate assets with. Default: none. */
+  assetGenerators?: AssetGenerator[];
+  dispose(): void;
+}
 
 export interface StartTempiAgentOptions {
   target: Target;
@@ -16,6 +28,8 @@ export interface StartTempiAgentOptions {
   thinkingLevel?: AgentSession["thinkingLevel"];
   /** Connect the MCP servers from pi's mcp.json (asset generators). Default true. */
   mcp?: boolean;
+  /** Extra inline extensions, such as tempi's co-creation loop. */
+  extensionFactories?: ExtensionFactory[];
   /** Every session event, for progress output. */
   onEvent?: (event: AgentSessionEvent) => void;
   /** Called once the session runs, with the model and extension problems. */
@@ -23,14 +37,15 @@ export interface StartTempiAgentOptions {
 }
 
 /**
- * Starts tempi's agent for the co-creation loop: a tempi session with the
+ * Starts tempi's agent for the plain co-creation loop: a tempi session with the
  * target's check_game and save_asset tools, after the configured MCP servers
- * have connected so the prompts can name them.
+ * have connected so tempi can say which generators there are.
  */
 export async function startTempiAgent(options: StartTempiAgentOptions): Promise<StartedAgent & { session: AgentSession }> {
   const { target, workspace } = options;
   const agentDir = options.agentDir ?? getAgentDir();
   const tempi = await createTempiSession({
+    target,
     workspace,
     agentDir,
     modelRuntime: options.modelRuntime,
@@ -38,6 +53,7 @@ export async function startTempiAgent(options: StartTempiAgentOptions): Promise<
     thinkingLevel: options.thinkingLevel,
     mcp: options.mcp,
     customTools: [createCheckGameTool(target, workspace), createSaveAssetTool(workspace)],
+    ...(options.extensionFactories ? { extensionFactories: options.extensionFactories } : {}),
   });
   try {
     const active = tempi.session.model;

@@ -91,10 +91,15 @@ export function bundledResources(
     const root = resolvePackageRoot(name, from);
     const manifest = readManifest(root, name);
     const extensions = manifestPaths(root, name, manifest.extensions);
-    // pi loads a package root through its manifest, as `pi install` would.
+    // pi loads a package root through its manifest, as `pi install` would — its
+    // skills and prompts come with it. Passing them as paths too would load
+    // them twice, and pi reports each duplicate as a collision (ADR 0009); a
+    // package with no extensions gets its paths passed directly.
     if (extensions.length > 0) resources.extensionPaths.push(root);
-    resources.skillPaths.push(...manifestPaths(root, name, manifest.skills));
-    resources.promptPaths.push(...manifestPaths(root, name, manifest.prompts));
+    else {
+      resources.skillPaths.push(...manifestPaths(root, name, manifest.skills));
+      resources.promptPaths.push(...manifestPaths(root, name, manifest.prompts));
+    }
     if (inChildren) {
       extensions.forEach((entry, i) => {
         resources.childExtensions.push({ id: extensions.length > 1 ? `${name}-${i + 1}` : name, path: entryFile(entry) });

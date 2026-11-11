@@ -3,7 +3,7 @@
 Date: 2026-11-11
 
 ## Status
-Accepted
+Accepted. The loading-path clause superseded by [0009](0009-load-bundled-packages-through-their-root-only.md).
 
 From [the bundled pi packages plan](../plans/bundled-pi-packages.md).
 

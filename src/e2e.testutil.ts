@@ -2,7 +2,7 @@ import { type FauxResponseStep, fauxAssistantMessage, fauxProvider, fauxToolCall
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import path from "node:path";
 import { startTempiAgent } from "./agent.js";
-import { type CoCreationResult, type LoopIO, runCoCreation } from "./loop.js";
+import { type PlainCoCreationResult, type PlainIO, runPlainCoCreation } from "./plain.js";
 import type { Target } from "./targets/target.js";
 
 /** A scripted tool call, as the model's whole turn step. */
@@ -17,7 +17,7 @@ export interface ToolRecord {
 }
 
 export interface ScriptedRun {
-  result: CoCreationResult;
+  result: PlainCoCreationResult;
   info: string[];
   tools: ToolRecord[];
   /** Scripted responses the agent never asked for: should be 0. */
@@ -25,8 +25,8 @@ export interface ScriptedRun {
 }
 
 /**
- * Runs the whole co-creation loop, as the CLI does, with a scripted model
- * (pi-ai's faux provider) instead of a real one, and scripted user answers.
+ * Runs the plain co-creation loop, as the CLI's plain mode does, with a scripted
+ * model (pi-ai's faux provider) instead of a real one, and scripted user lines.
  */
 export async function runScripted(options: {
   target: Target;
@@ -45,11 +45,12 @@ export async function runScripted(options: {
   const info: string[] = [];
   const tools: ToolRecord[] = [];
   const answers = [...options.answers];
-  const io: LoopIO = { info: (message) => void info.push(message), ask: async () => answers.shift() };
-  const result = await runCoCreation({
+  const io: PlainIO = { info: (message: string) => void info.push(message), ask: async () => answers.shift() };
+  const result = await runPlainCoCreation({
     idea: options.idea,
     target: options.target,
-    workspace: options.workspace,
+    parentDir: path.dirname(options.workspace),
+    out: options.workspace,
     io,
     startAgent: (workspace) =>
       startTempiAgent({
