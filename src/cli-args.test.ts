@@ -1,11 +1,10 @@
 import { expect, test } from "vitest";
 import { parseCliArgs, USAGE } from "./cli-args.js";
 
-test("an idea alone builds for the default target, web", () => {
+test("an idea alone leaves the target to the game: the existing game's, else the default", () => {
   expect(parseCliArgs(["a cat catches falling fish"])).toEqual({
     kind: "create",
     idea: "a cat catches falling fish",
-    target: "web",
     open: true,
     mcp: true,
     plain: false,
@@ -13,7 +12,7 @@ test("an idea alone builds for the default target, web", () => {
 });
 
 test("no idea opens the chat interface; the first message becomes the idea", () => {
-  expect(parseCliArgs([])).toEqual({ kind: "create", target: "web", open: true, mcp: true, plain: false });
+  expect(parseCliArgs([])).toEqual({ kind: "create", open: true, mcp: true, plain: false });
 });
 
 test("unquoted words form the idea; options take target, out, model, and plain", () => {
@@ -41,4 +40,8 @@ test("help and version need no idea", () => {
 test("unknown targets and unknown options are errors", () => {
   expect(() => parseCliArgs(["-t", "unity", "x"])).toThrow(/Unknown target "unity"/);
   expect(() => parseCliArgs(["--fast", "x"])).toThrow(/Unknown option/);
+});
+
+test("the usage says tempi continues the game it is run in", () => {
+  expect(USAGE).toContain("Run tempi inside a game folder");
 });

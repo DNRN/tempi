@@ -11,6 +11,7 @@ tempi is an AI harness for creating games, built on the pi agent (badlogic pi-mo
 
 1. A user describes a game idea; the pi agent plans and builds a playable first version (a web build or a Godot project), and the user plays it.
 2. The user requests changes; the agent edits the game and produces a new playable version; the user replays it. Repeated until the user is happy.
+3. The user comes back later, runs tempi in the game's folder, and keeps changing the game: same engine, last conversation, and the agent's notes on the game ([ADR 0010](docs/adr/0010-game-manifest-and-continuing-existing-games.md)).
 
 ## Scope
 
@@ -42,6 +43,7 @@ tempi is an AI harness for creating games, built on the pi agent (badlogic pi-mo
 | Agent | pi agent (badlogic pi-mono) | The harness is built from it |
 | Bundled pi packages | pi-web-access, pi-subagents: pinned npm dependencies; tempi's sessions load only these, not the user's own pi packages ([ADR 0005](docs/adr/0005-bundle-pi-packages-as-pinned-npm-dependencies.md)) | Web lookups and delegation without setup; same behavior on every machine |
 | Game targets | Web (HTML5), checked in headless Google Chrome via Playwright ([ADR 0007](docs/adr/0007-headless-web-check-with-playwright-and-installed-chrome.md)), and Godot 4 (system binary, checked by running it headless) | Simplicity first; more engines later |
+| Game state | `.tempi/game.json` records each game's target and idea; tempi continues the game in the working directory or `--out`, with its last session and the agent's notes in `.tempi/notes.md` ([ADR 0010](docs/adr/0010-game-manifest-and-continuing-existing-games.md); [plan](docs/plans/resume-existing-game.md)) | Pick up a game later without repeating the engine or the idea |
 | Game assets | Images, sounds, and 3D models from the user's own MCP servers, added with `pi mcp add` ([ADR 0003](docs/adr/0003-mcp-through-pis-built-in-mcp-support.md), [ADR 0004](docs/adr/0004-load-pis-mcp-extensions-in-tempi-sessions.md)); art drawn in code when there are none | tempi bundles no asset service |
 | Front end | pi's interactive interface on tempi's own session, with a plain mode for piped and scripted runs ([ADR 0008](docs/adr/0008-pi-interactive-tui-as-tempis-front-end.md), supersedes the plain CLI of [ADR 0002](docs/adr/0002-plain-cli-front-end-for-the-vertical-slice.md); [plan](docs/plans/pi-tui-front-end.md)) | pi's full interface for free; customize later through pi's extension API |
 | Hosting / distribution | open | Not discussed |

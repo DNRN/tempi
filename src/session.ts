@@ -20,8 +20,9 @@ import {
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { registerRequiredChildExtensions } from "pi-subagents/required-child-extensions";
+import { readGameManifest, readNotes } from "./game.js";
 import { type BundledResources, bundledResources } from "./packages.js";
-import { tempiSystemPrompt } from "./prompts/system.js";
+import { type ExistingGame, tempiSystemPrompt } from "./prompts/system.js";
 import type { Target } from "./targets/target.js";
 import { prepareWorkspace, sessionDir } from "./workspace.js";
 
@@ -43,6 +44,11 @@ export interface TempiSessionOptions {
   resources?: BundledResources;
   /** Connect the MCP servers from pi's mcp.json. Default true. */
   mcp?: boolean;
+  /**
+   * The workspace holds an existing game tempi continues (ADR 0010): its most
+   * recent session is reopened, and the system prompt says what the game is.
+   */
+  resume?: boolean;
 }
 
 /** Extra options the plain front end passes to its own session. */
@@ -95,6 +101,7 @@ function tempiResourceLoaderOptions(
   options: { mcp?: boolean; target: Target },
   resources: BundledResources,
   factories: ExtensionFactory[],
+  existing?: ExistingGame,
 ) {
   return {
     noExtensions: true,
@@ -109,8 +116,16 @@ function tempiResourceLoaderOptions(
       ...(options.mcp === false ? [] : [createMcpExtension()]),
       ...factories,
     ],
-    appendSystemPrompt: [tempiSystemPrompt(options.target)],
+    appendSystemPrompt: [tempiSystemPrompt(options.target, existing)],
   };
+}
+
+/** The existing game in a workspace, read fresh for each session so the notes are current. */
+function existingGame(workspace: string): ExistingGame | undefined {
+  const manifest = readGameManifest(workspace);
+  if (!manifest) return undefined;
+  const notes = readNotes(workspace);
+  return { manifest, ...(notes ? { notes } : {}) };
 }
 
 function throwOnLoadErrors(loader: ResourceLoader): void {
@@ -145,7 +160,7 @@ export async function createTempiSession(options: TempiPlainSessionOptions & { e
   const resourceLoader = new DefaultResourceLoader({
     cwd: workspace,
     agentDir,
-    ...tempiResourceLoaderOptions(options, resources, options.extensionFactories ?? []),
+    ...tempiResourceLoaderOptions(options, resources, options.extensionFactories ?? [], options.resume ? existingGame(workspace) : undefined),
   });
   await resourceLoader.reload();
   throwOnLoadErrors(resourceLoader);
@@ -159,7 +174,9 @@ export async function createTempiSession(options: TempiPlainSessionOptions & { e
     resourceLoader,
     customTools: options.customTools,
     settingsManager: SettingsManager.create(workspace, agentDir),
-    sessionManager: options.sessionManager ?? SessionManager.create(workspace, sessionDir(workspace)),
+    sessionManager:
+      options.sessionManager ??
+      (options.resume ? SessionManager.continueRecent(workspace, sessionDir(workspace)) : SessionManager.create(workspace, sessionDir(workspace))),
   });
   // With no usable model pi keeps a placeholder, so check for credentials. A model
   // the caller passed is taken as is.
@@ -227,7 +244,12 @@ export async function createTempiRuntime(options: TempiRuntimeOptions): Promise<
       agentDir,
       modelRuntime: options.modelRuntime,
       settingsManager: SettingsManager.create(workspace, agentDir, { projectTrusted: true }),
-      resourceLoaderOptions: tempiResourceLoaderOptions(options, resources, options.extensionFactories ?? []),
+      resourceLoaderOptions: tempiResourceLoaderOptions(
+        options,
+        resources,
+        options.extensionFactories ?? [],
+        options.resume && workspace === options.workspace ? existingGame(workspace) : undefined,
+      ),
     });
     throwOnLoadErrors(services.resourceLoader);
 
@@ -252,7 +274,9 @@ export async function createTempiRuntime(options: TempiRuntimeOptions): Promise<
     cwd: initial,
     agentDir,
     sessionManager: options.workspace
-      ? SessionManager.create(options.workspace, sessionDir(options.workspace))
+      ? options.resume
+        ? SessionManager.continueRecent(options.workspace, sessionDir(options.workspace))
+        : SessionManager.create(options.workspace, sessionDir(options.workspace))
       : SessionManager.inMemory(initial),
   });
   // The runtime tears sessions down itself; the pi-subagents registration for

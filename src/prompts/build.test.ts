@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { createFakeTarget } from "../targets/fake-target.testutil.js";
 import { createGodotTarget } from "../targets/godot.js";
 import { createWebTarget } from "../targets/web.js";
-import { ASSET_BUDGET, assetGuidance, fixPrompt, targetGuidance } from "./build.js";
+import { ASSET_BUDGET, assetGuidance, fixPrompt, resumeGuidance, targetGuidance } from "./build.js";
 
 const { target } = createFakeTarget();
 const GENERATORS = [
@@ -40,6 +40,19 @@ test("the target guidance carries the target's rules, the first-build rule, and 
   expect(text).toContain("For a question, answer it and leave the game's files alone");
   expect(text).toContain("tempi checks the game again after your turn and starts it for the user");
   expect(text).not.toContain("asset generators");
+  expect(text).toContain("update .tempi/notes.md");
+});
+
+test("the resume guidance gives the idea and the notes, or asks the agent to read the code and write notes", () => {
+  const manifest = { version: 1 as const, target: "web" as const, idea: "a cat catches fish", createdAt: "", tempiVersion: "" };
+  const withNotes = resumeGuidance(manifest, "A cat game. Arrow keys.");
+  expect(withNotes).toContain('started from the idea: "a cat catches fish"');
+  expect(withNotes).toContain("never the idea for a new game");
+  expect(withNotes).toContain("A cat game. Arrow keys.");
+  const without = resumeGuidance({ ...manifest, idea: undefined }, undefined);
+  expect(without).toContain("no recorded idea");
+  expect(without).toContain("read the game's code");
+  expect(without).toContain("write the notes with your first change");
 });
 
 test("the fix prompt carries the formatted check result", () => {

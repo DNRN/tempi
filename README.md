@@ -29,16 +29,19 @@ See [PROJECT.md](PROJECT.md) for purpose, scope, and open decisions, and [docs/a
 node dist/cli.js "a cat catches falling fish"
 node dist/cli.js --target godot "roll a ball through a small obstacle course"
 node dist/cli.js            # opens the chat; your first message is the idea
+cd a-cat-catches-falling-fish && node ../dist/cli.js   # continues that game
 ```
 
 tempi opens pi's chat interface ([ADR 0008](docs/adr/0008-pi-interactive-tui-as-tempis-front-end.md)) running its game-building agent: streaming output, tool calls, `/model`, `/login`, interrupt, and session history work as in pi. With an idea, tempi creates a folder for the game (named after the idea), builds a first version with the agent, checks it (headless Chrome for web, headless Godot for Godot), and opens it: in your browser, or in a Godot window. Without one, your first message in the chat is the idea. After each turn that changes the game, tempi checks it again, asks the agent to fix what the check finds, and restarts it; a turn that only answers a question doesn't. `/play` and `/check` start the game and run the check on demand.
+
+Run tempi inside a game folder, or point `--out` at one, and it continues that game instead of starting a new one ([ADR 0010](docs/adr/0010-game-manifest-and-continuing-existing-games.md)): it uses the game's target, reopens its most recent session, and gives the agent the game's idea and its notes. An idea on the command line is then a change request. tempi recognizes its own games by `.tempi/game.json`, and other folders by their engine files (`project.godot` for Godot, `index.html` for web); a `--target` that disagrees with the game is an error. pi finds a game's sessions by the folder's path, so after moving or renaming a game folder tempi starts a new session there (the notes still carry over).
 
 Your messages reach the agent as typed: a change request, or a question about the game. tempi's guidance (the target's rules, assets, budgets) lives in the system prompt instead of wrapping each message.
 
 ```
 tempi [options] ["<game idea>"]
-  -t, --target <web|godot>  game target (default: web)
-  -o, --out <dir>           workspace directory (default: a new folder named after the idea)
+  -t, --target <web|godot>  game target (default: web, or the existing game's)
+  -o, --out <dir>           game folder: new, empty, or an existing game (default: a new folder named after the idea)
   -m, --model <pattern>     model, as for pi --model (default: pi's default model)
       --plain               plain question-and-answer loop instead of the chat interface
       --no-open             don't open the game; print where it is or how to play it
@@ -60,7 +63,7 @@ MCP servers (for generated assets) come from pi's own configuration: add them wi
 
 tempi's sessions do not load your own pi packages, extensions, skills, or prompts. A model provider that comes from one of your extensions is therefore not available in tempi.
 
-In each game workspace tempi writes `.pi/settings.json` (keeps your pi extensions out of background subagents) and keeps its session history in `.tempi/sessions/`, so `pi` opened in the folder can resume it.
+In each game workspace tempi writes `.pi/settings.json` (keeps your pi extensions out of background subagents), records the game's target and idea in `.tempi/game.json`, and keeps its session history in `.tempi/sessions/`, so `pi` opened in the folder can resume it. The agent keeps notes on the game (what it is, controls, file layout, changes) in `.tempi/notes.md`.
 
 ## Development
 

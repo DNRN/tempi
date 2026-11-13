@@ -7,6 +7,8 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { createTempiRuntime, createTempiSession, NoModelError, type TempiSessionResult } from "./session.js";
 import { createCheckGameTool } from "./targets/check-tool.js";
 import { createFakeTarget } from "./targets/fake-target.testutil.js";
+import { writeGameManifest } from "./game.js";
+import { sessionDir } from "./workspace.js";
 
 const fakeTarget = createFakeTarget().target;
 
@@ -141,6 +143,60 @@ test("the runtime starts in the lobby unsaved and moves its sessions to the game
     expect(runtime.session.systemPrompt).toContain("tempi's game-building agent");
     expect(runtime.session.systemPrompt).toContain("Fake target instructions.");
     expect(JSON.parse(readFileSync(path.join(game, ".pi", "settings.json"), "utf8"))).toEqual({ subagents: { defaultExtensions: [] } });
+  } finally {
+    await runtime.dispose();
+  }
+}, 60_000);
+
+test("resuming an existing game reopens its last session and tells the agent about the game", async () => {
+  mkdirSync(path.join(workspace, ".tempi"), { recursive: true });
+  writeGameManifest(workspace, { target: "web", idea: "a cat catches fish" });
+  writeFileSync(path.join(workspace, ".tempi", "notes.md"), "Arrow keys move the cat.");
+  const earlier = SessionManager.create(workspace, sessionDir(workspace));
+  earlier.appendMessage({ role: "user", content: "a cat catches fish", timestamp: Date.now() });
+  const runtime = await createTempiRuntime({ target: fakeTarget, workspace, resume: true, agentDir, ...(await runtimeWithModel()) });
+  try {
+    expect(runtime.session.sessionId).toBe(earlier.getSessionId());
+    expect(runtime.session.systemPrompt).toContain("Continuing an existing game");
+    expect(runtime.session.systemPrompt).toContain("Arrow keys move the cat.");
+  } finally {
+    await runtime.dispose();
+  }
+}, 60_000);
+
+test("a new game's runtime gets no resume guidance", async () => {
+  const runtime = await createTempiRuntime({ target: fakeTarget, workspace, agentDir, ...(await runtimeWithModel()) });
+  try {
+    expect(runtime.session.systemPrompt).not.toContain("Continuing an existing game");
+  } finally {
+    await runtime.dispose();
+  }
+}, 60_000);
+
+test("the plain front end's session resumes an existing game the same way", async () => {
+  mkdirSync(path.join(workspace, ".tempi"), { recursive: true });
+  writeGameManifest(workspace, { target: "web", idea: "a cat catches fish" });
+  writeFileSync(path.join(workspace, ".tempi", "notes.md"), "Arrow keys move the cat.");
+  const earlier = SessionManager.create(workspace, sessionDir(workspace));
+  earlier.appendMessage({ role: "user", content: "a cat catches fish", timestamp: Date.now() });
+  opened = await createTempiSession({ target: fakeTarget, workspace, resume: true, agentDir, ...(await runtimeWithModel()) });
+  expect(opened.session.sessionId).toBe(earlier.getSessionId());
+  expect(opened.session.systemPrompt).toContain("Continuing an existing game");
+  expect(opened.session.systemPrompt).toContain("Arrow keys move the cat.");
+}, 60_000);
+
+test("resuming a game with no earlier session starts a new one, and /new keeps the game's guidance", async () => {
+  writeGameManifest(workspace, { target: "web", idea: "a cat catches fish" });
+  const runtime = await createTempiRuntime({ target: fakeTarget, workspace, resume: true, agentDir, ...(await runtimeWithModel()) });
+  try {
+    expect(runtime.session.sessionId).toBeTruthy();
+    expect(runtime.session.systemPrompt).toContain("Continuing an existing game");
+    expect(runtime.session.systemPrompt).toContain("There are no notes on it yet");
+    const first = runtime.session.sessionId;
+    writeFileSync(path.join(workspace, ".tempi", "notes.md"), "Space jumps.");
+    await runtime.newSession();
+    expect(runtime.session.sessionId).not.toBe(first);
+    expect(runtime.session.systemPrompt).toContain("Space jumps.");
   } finally {
     await runtime.dispose();
   }

@@ -5,14 +5,14 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { getAgentDir, initTheme, InteractiveMode, ModelRuntime, resolveCliModel } from "@earendil-works/pi-coding-agent";
 import { startTempiAgent } from "./agent.js";
-import { parseCliArgs, USAGE } from "./cli-args.js";
+import { type CliCommand, parseCliArgs, USAGE } from "./cli-args.js";
+import { type GameChoice, resolveGame, writeGameManifest } from "./game.js";
 import { createTempiLoop, PrerequisiteError } from "./loop.js";
 import { runPlainCoCreation } from "./plain.js";
 import { createProgressPrinter } from "./progress.js";
 import { createTempiRuntime } from "./session.js";
 import { createCheckGameTool } from "./targets/check-tool.js";
 import { createTarget } from "./targets/index.js";
-import type { TargetId } from "./targets/target.js";
 import { createSaveAssetTool } from "./tools/save-asset.js";
 import { tempiVersion } from "./version.js";
 import { chooseWorkspace, prepareWorkspace } from "./workspace.js";
@@ -43,9 +43,11 @@ async function resolveModel(pattern: string | undefined, modelRuntime: ModelRunt
   return { model: resolved.model, thinkingLevel: resolved.thinkingLevel };
 }
 
+type CreateCommand = Extract<CliCommand, { kind: "create" }>;
+
 /** The plain front end: the old line-by-line loop (ADR 0008), used with `--plain` and for piped input. */
-async function runPlain(command: { idea?: string; target: TargetId; out?: string; model?: string; open: boolean; mcp: boolean }): Promise<number> {
-  const target = createTarget(command.target, { open: command.open });
+async function runPlain(command: CreateCommand, game: GameChoice): Promise<number> {
+  const target = createTarget(game.target, { open: command.open });
   const modelRuntime = await ModelRuntime.create();
   const { model, thinkingLevel } = await resolveModel(command.model, modelRuntime);
 
@@ -64,6 +66,7 @@ async function runPlain(command: { idea?: string; target: TargetId; out?: string
       target,
       parentDir: process.cwd(),
       ...(command.out ? { out: command.out } : {}),
+      ...(game.kind === "existing" ? { existing: { workspace: game.workspace } } : {}),
       io: {
         info,
         async ask(question) {
@@ -86,6 +89,7 @@ async function runPlain(command: { idea?: string; target: TargetId; out?: string
           model,
           thinkingLevel,
           mcp: command.mcp,
+          resume: game.kind === "existing",
           onEvent: (event) => progress.onEvent(event),
           onStart({ model: active, extensionErrors }) {
             for (const error of extensionErrors) info(`Extension problem (${error.extensionPath}): ${error.error}`);
@@ -100,19 +104,22 @@ async function runPlain(command: { idea?: string; target: TargetId; out?: string
 }
 
 /** pi's own interactive interface running tempi's agent (ADR 0008). */
-async function runInteractive(
-  command: { idea?: string; target: TargetId; out?: string; model?: string; open: boolean; mcp: boolean },
-): Promise<number> {
-  const target = createTarget(command.target, { open: command.open });
+async function runInteractive(command: CreateCommand, game: GameChoice): Promise<number> {
+  const target = createTarget(game.target, { open: command.open });
   const modelRuntime = await ModelRuntime.create();
   const { model, thinkingLevel } = await resolveModel(command.model, modelRuntime);
 
-  // With an idea (or --out), the game folder exists before the session starts.
+  // An existing game is continued in place (ADR 0010); with an idea (or --out),
+  // a new game folder exists before the session starts.
   let workspace: string | undefined;
-  if (command.out || command.idea) {
+  if (game.kind === "existing") {
+    workspace = game.workspace;
+    prepareWorkspace(workspace);
+  } else if (command.out || command.idea) {
     workspace = chooseWorkspace(command.idea ?? "game", process.cwd(), command.out);
     prepareWorkspace(workspace);
     await target.scaffold(workspace);
+    writeGameManifest(workspace, { target: target.id, ...(command.idea ? { idea: command.idea } : {}) });
   }
   // Without one, the session waits in tempi's lobby until the first message.
   const lobby = workspace ? undefined : mkdtempSync(path.join(tmpdir(), "tempi-"));
@@ -122,6 +129,7 @@ async function runInteractive(
     parentDir: process.cwd(),
     agentDir: getAgentDir(),
     ...(workspace ? { workspace } : {}),
+    ...(game.kind === "existing" ? { existing: game.manifest.idea ? { idea: game.manifest.idea } : {} } : {}),
     mcp: command.mcp,
   });
   const runtime = await createTempiRuntime({
@@ -133,6 +141,7 @@ async function runInteractive(
     model,
     thinkingLevel,
     mcp: command.mcp,
+    resume: game.kind === "existing",
     extensionFactories: [loop.factory],
     customToolsFor: (dir) => [createCheckGameTool(target, dir), createSaveAssetTool(dir)],
   });
@@ -161,12 +170,16 @@ async function main(argv: string[]): Promise<number> {
   }
 
   muteKnownWarnings();
-  const target = createTarget(command.target, { open: command.open });
+  // The game decides the target: an existing one keeps its own (ADR 0010).
+  const game = resolveGame(command, process.cwd());
+  const target = createTarget(game.target, { open: command.open });
   const problems = await target.prerequisites();
   if (problems.length > 0) throw new PrerequisiteError(target, problems);
+  // Adopt a folder found by its engine files only once tempi is sure to continue it.
+  if (game.kind === "existing" && game.adopt) writeGameManifest(game.workspace, game.manifest);
 
   const plain = command.plain || !process.stdin.isTTY;
-  return plain ? runPlain(command) : runInteractive(command);
+  return plain ? runPlain(command, game) : runInteractive(command, game);
 }
 
 main(process.argv.slice(2)).then(

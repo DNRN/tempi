@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import type { AssetGenerator } from "./assets.js";
 import type { StartedAgent } from "./agent.js";
-import { type PlainIO, runPlainCoCreation } from "./plain.js";
+import { readGameManifest } from "./game.js";
+import { type PlainCoCreationOptions, type PlainIO, runPlainCoCreation } from "./plain.js";
 import { createFakeTarget } from "./targets/fake-target.testutil.js";
 import type { CheckResult } from "./targets/target.js";
 
@@ -27,7 +28,7 @@ function harness(answers: (string | undefined)[], checks: CheckResult[] = [CLEAN
     info: (message) => void info.push(message),
     ask: async () => answers.shift(),
   };
-  const run = (maxFixRounds?: number) =>
+  const run = (maxFixRounds?: number, extra: Partial<PlainCoCreationOptions> = {}) =>
     runPlainCoCreation({
       idea: "a cat catches falling fish",
       target: fake.target,
@@ -47,6 +48,7 @@ function harness(answers: (string | undefined)[], checks: CheckResult[] = [CLEAN
           dispose: () => void events.push("dispose"),
         } satisfies StartedAgent;
       },
+      ...extra,
     });
   return { fake, events, prompts, info, run };
 }
@@ -133,4 +135,40 @@ test("disposes the agent and stops the game when a turn fails", async () => {
   };
   await expect(h.run()).rejects.toThrow("browser crashed");
   expect(h.events.at(-1)).toBe("dispose");
+});
+
+test("a new game records its target and idea in the manifest", async () => {
+  const h = harness([""]);
+  const result = await h.run();
+  expect(readGameManifest(result.workspace)).toMatchObject({ target: "web", idea: "a cat catches falling fish" });
+});
+
+test("an existing game: no scaffold and no first build; it plays, then takes change requests", async () => {
+  const workspace = path.join(dir, "existing");
+  mkdirSync(workspace);
+  const h = harness(["make the fish faster", ""]);
+  const result = await h.run(undefined, { idea: undefined, existing: { workspace } });
+  expect(result).toEqual({ workspace, changes: 1, lastCheck: CLEAN });
+  expect(h.prompts).toEqual(["make the fish faster"]);
+  expect(h.fake.calls).toEqual([`run ${workspace}`, "stop", `check ${workspace}`, `run ${workspace}`, "stop"]);
+  expect(h.info).toContain(`Continuing your Fake game in ${workspace}`);
+});
+
+test("an existing game: the command line's idea is the first change request", async () => {
+  const workspace = path.join(dir, "existing");
+  mkdirSync(workspace);
+  const h = harness([""]);
+  const result = await h.run(undefined, { idea: "make it blue", existing: { workspace } });
+  expect(h.prompts).toEqual(["make it blue"]);
+  expect(result.changes).toBe(1);
+  expect(h.fake.calls[0]).toBe(`check ${workspace}`);
+});
+
+test("an existing game left unchanged is still checked once, for the exit code", async () => {
+  const workspace = path.join(dir, "existing");
+  mkdirSync(workspace);
+  const h = harness([""], [BROKEN]);
+  const result = await h.run(undefined, { idea: undefined, existing: { workspace } });
+  expect(result).toEqual({ workspace, changes: 0, lastCheck: BROKEN });
+  expect(h.prompts).toEqual([]);
 });

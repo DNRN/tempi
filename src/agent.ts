@@ -30,6 +30,8 @@ export interface StartTempiAgentOptions {
   mcp?: boolean;
   /** Extra inline extensions, such as tempi's co-creation loop. */
   extensionFactories?: ExtensionFactory[];
+  /** Continue the existing game in the workspace: its last session and notes (ADR 0010). */
+  resume?: boolean;
   /** Every session event, for progress output. */
   onEvent?: (event: AgentSessionEvent) => void;
   /** Called once the session runs, with the model and extension problems. */
@@ -52,6 +54,7 @@ export async function startTempiAgent(options: StartTempiAgentOptions): Promise<
     model: options.model,
     thinkingLevel: options.thinkingLevel,
     mcp: options.mcp,
+    ...(options.resume ? { resume: true } : {}),
     customTools: [createCheckGameTool(target, workspace), createSaveAssetTool(workspace)],
     ...(options.extensionFactories ? { extensionFactories: options.extensionFactories } : {}),
   });

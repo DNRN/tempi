@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { AgentSessionRuntime } from "@earendil-works/pi-coding-agent";
-import { createTempiLoop, filesChanged, scanWorkspace } from "./loop.js";
+import { readGameManifest, writeGameManifest } from "./game.js";
+import { createTempiLoop, filesChanged, scanWorkspace, type TempiLoopOptions } from "./loop.js";
 import { createFakeTarget } from "./targets/fake-target.testutil.js";
 import type { CheckResult } from "./targets/target.js";
 
@@ -35,7 +36,7 @@ test("scanWorkspace lists files but not tempi's own state; filesChanged spots ne
 });
 
 /** A scripted extension host: records handlers, commands, and what tempi sends. */
-function harness(checks: CheckResult[] = [CLEAN]) {
+function harness(checks: CheckResult[] = [CLEAN], extra: Partial<TempiLoopOptions> = {}) {
   const fake = createFakeTarget(checks);
   const info: string[] = [];
   const sentToAgent: string[] = [];
@@ -44,6 +45,7 @@ function harness(checks: CheckResult[] = [CLEAN]) {
     parentDir: dir,
     agentDir: path.join(dir, "agent"),
     info: (message) => void info.push(message),
+    ...extra,
   });
   const handlers = new Map<string, ((event: never, ctx: never) => Promise<unknown>)[]>();
   const commands = new Map<string, { handler: (args: unknown, ctx: unknown) => Promise<void> }>();
@@ -197,4 +199,64 @@ test("stopping the session stops the game, and /play and /check work", async () 
   await h.commands.get("check")!.handler(undefined, h.ctx);
   expect(h.fake.calls.at(-1)).toBe(`check ${workspace}`);
   expect(h.info.some((m) => m.includes("loaded and ran without errors"))).toBe(true);
+});
+
+test("a new game's folder records its target and idea in the manifest", async () => {
+  const h = harness();
+  await h.emit("input", { type: "input", text: "a cat catches fish", source: "interactive", images: [] });
+  await h.flush();
+  expect(readGameManifest(h.loop.state.workspace!)).toMatchObject({ target: "web", idea: "a cat catches fish" });
+});
+
+/** An existing game's folder, as tempi continues it. */
+function existingGame(): string {
+  const workspace = path.join(dir, "existing");
+  mkdirSync(workspace);
+  writeFileSync(path.join(workspace, "index.html"), "game");
+  writeGameManifest(workspace, { target: "web", idea: "a cat catches fish" });
+  return workspace;
+}
+
+test("an existing game: no new folder, and a turn that changes nothing is a question", async () => {
+  const workspace = existingGame();
+  const h = harness([CLEAN], { workspace, existing: { idea: "a cat catches fish" } });
+  await h.emit("session_start", { type: "session_start", reason: "startup" });
+  expect(h.info).toContain(`Continuing your Fake game in ${workspace}.`);
+  expect(await h.emit("input", { type: "input", text: "what are the controls?", source: "interactive", images: [] })).toEqual({ action: "continue" });
+  await h.turn("what are the controls?");
+  expect(h.fake.calls).toEqual([]);
+  expect(h.loop.state).toMatchObject({ workspace, idea: "a cat catches fish", changes: 0 });
+});
+
+test("an existing game: a turn that changes files is a change, checked and restarted", async () => {
+  const workspace = existingGame();
+  const h = harness([CLEAN], { workspace, existing: {} });
+  await h.emit("session_start", { type: "session_start", reason: "startup" });
+  writeFileSync(path.join(workspace, "game.js"), "faster");
+  await h.turn("make it faster");
+  expect(h.fake.calls).toEqual([`check ${workspace}`, `run ${workspace}`]);
+  expect(h.loop.state.changes).toBe(1);
+});
+
+test("/resume into a game's folder continues it instead of building a new one", async () => {
+  const workspace = existingGame();
+  const h = harness();
+  h.ctx.cwd = workspace;
+  await h.emit("session_start", { type: "session_start", reason: "resume" });
+  await h.turn("what are the controls?");
+  expect(h.fake.calls).toEqual([]);
+  writeFileSync(path.join(workspace, "game.js"), "blue");
+  await h.turn("make it blue");
+  expect(h.loop.state.changes).toBe(1);
+});
+
+test("/resume into a folder from an earlier tempi, with no manifest, continues it too", async () => {
+  const workspace = path.join(dir, "older");
+  mkdirSync(workspace);
+  writeFileSync(path.join(workspace, "project.godot"), "");
+  const h = harness();
+  h.ctx.cwd = workspace;
+  await h.emit("session_start", { type: "session_start", reason: "resume" });
+  await h.turn("what are the controls?");
+  expect(h.fake.calls).toEqual([]);
 });
