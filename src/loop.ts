@@ -2,6 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import type { AgentSessionRuntime, ExtensionAPI, ExtensionContext, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import { configuredMcpServerCount, waitForAssetGenerators, type AssetGenerator } from "./assets.js";
+import { detectGame, writeGameManifest } from "./game.js";
 import { assetGuidance, fixPrompt } from "./prompts/build.js";
 import { type CheckResult, formatCheckResult, type RunningGame, type Target } from "./targets/target.js";
 import { chooseWorkspace, prepareWorkspace } from "./workspace.js";
@@ -37,8 +38,13 @@ export interface TempiLoopOptions {
   parentDir: string;
   /** pi's agent directory, to read how many MCP servers to wait for. */
   agentDir: string;
-  /** The workspace tempi was started with (`tempi "<idea>"` or `--out`). */
+  /** The workspace tempi was started with (`tempi "<idea>"`, `--out`, or an existing game). */
   workspace?: string;
+  /**
+   * The workspace already holds a game tempi continues (ADR 0010): the first
+   * turn is a change or a question, never a first build.
+   */
+  existing?: { idea?: string };
   /** Wait for the configured MCP servers (asset generators). Default true. */
   mcp?: boolean;
   /** Fix rounds tempi asks for when its check still fails after a turn. Default 3. */
@@ -98,6 +104,15 @@ export function scanWorkspace(workspace: string): Map<string, number> {
   return files;
 }
 
+/** Whether the workspace holds a game, as tempi detects one at startup (ADR 0010); an unreadable manifest counts as none. */
+function holdsGame(workspace: string): boolean {
+  try {
+    return detectGame(workspace) !== undefined;
+  } catch {
+    return false;
+  }
+}
+
 /** Whether the workspace's files changed between two scans (ADR 0008: only changes restart the game). */
 export function filesChanged(before: Map<string, number>, after: Map<string, number>): boolean {
   if (before.size !== after.size) return true;
@@ -116,11 +131,11 @@ export function filesChanged(before: Map<string, number>, after: Map<string, num
 export function createTempiLoop(options: TempiLoopOptions): TempiLoop {
   const maxFixRounds = options.maxFixRounds ?? 3;
   let workspace = options.workspace;
-  let idea: string | undefined;
+  let idea: string | undefined = options.existing?.idea;
   let running: RunningGame | undefined;
   let lastCheck: CheckResult | undefined;
   let changes = 0;
-  let built = false;
+  let built = options.existing !== undefined;
   let turnKind: TurnKind = "question";
   let fixRounds = 0;
   let fixing = false;
@@ -146,8 +161,17 @@ export function createTempiLoop(options: TempiLoopOptions): TempiLoop {
 
   const factory: ExtensionFactory = (pi: ExtensionAPI) => {
     pi.on("session_start", async (event, ctx) => {
-      if (event.reason === "resume") workspace = ctx.cwd;
+      if (event.reason === "resume") {
+        workspace = ctx.cwd;
+        // A resumed session's folder already holds its game.
+        if (!built && holdsGame(workspace)) built = true;
+      }
+      // Only file changes after this point make a turn a change (ADR 0008).
+      if (workspace && built && !fixing) lastScan = scanWorkspace(workspace);
       status(ctx);
+      if (event.reason === "startup" && options.existing && workspace) {
+        say(ctx, `Continuing your ${options.target.name} game in ${workspace}.`);
+      }
       if (event.reason === "startup") {
         void refreshGenerators(pi).then(() => {
           if (generators.length === 0 && options.mcp !== false) {
@@ -168,6 +192,7 @@ export function createTempiLoop(options: TempiLoopOptions): TempiLoop {
         dir = chooseWorkspace(text, options.parentDir);
         prepareWorkspace(dir);
         await options.target.scaffold(dir);
+        writeGameManifest(dir, { target: options.target.id, idea: text });
       } catch (error) {
         say(ctx, `tempi could not set up the game folder: ${error instanceof Error ? error.message : String(error)}`);
         return { action: "handled" };

@@ -3,6 +3,7 @@ import type { StartedAgent } from "./agent.js";
 import { fixPrompt } from "./prompts/build.js";
 import { assetCount } from "./loop.js";
 import { type CheckResult, formatCheckResult, type Target } from "./targets/target.js";
+import { writeGameManifest } from "./game.js";
 import { chooseWorkspace } from "./workspace.js";
 
 /** How the plain loop talks to the user. */
@@ -21,6 +22,11 @@ export interface PlainCoCreationOptions {
   parentDir: string;
   /** An explicit workspace directory, as `--out`. */
   out?: string;
+  /**
+   * An existing game to continue (ADR 0010): no scaffold and no first build;
+   * the idea, when given, is the first change request.
+   */
+  existing?: { workspace: string };
   io: PlainIO;
   startAgent(workspace: string): Promise<StartedAgent>;
   /** Fix rounds tempi asks for when its check still fails after a turn. Default 3. */
@@ -50,11 +56,17 @@ export async function runPlainCoCreation(options: PlainCoCreationOptions): Promi
   const { target, io } = options;
   const maxFixRounds = options.maxFixRounds ?? 3;
 
-  const idea = options.idea?.trim() || ((await io.ask("Describe the game to build (this first line is the idea): ")) ?? "").trim();
-  if (!idea) throw new Error("No game idea given.");
-  const workspace = chooseWorkspace(idea, options.parentDir, options.out);
-
-  await target.scaffold(workspace);
+  let workspace: string;
+  let idea: string | undefined;
+  if (options.existing) {
+    workspace = options.existing.workspace;
+  } else {
+    idea = options.idea?.trim() || ((await io.ask("Describe the game to build (this first line is the idea): ")) ?? "").trim();
+    if (!idea) throw new Error("No game idea given.");
+    workspace = chooseWorkspace(idea, options.parentDir, options.out);
+    await target.scaffold(workspace);
+    writeGameManifest(workspace, { target: target.id, idea });
+  }
   const { agent, dispose, assetGenerators = [] } = await options.startAgent(workspace);
   let running: Awaited<ReturnType<Target["run"]>> | undefined;
 
@@ -84,16 +96,25 @@ export async function runPlainCoCreation(options: PlainCoCreationOptions): Promi
         ? `Asset generators: ${assetGenerators.map((g: AssetGenerator) => g.name).join(", ")}`
         : "No asset generators configured: the game will use placeholder art. Add an image, sound, or 3D model generator with `pi mcp add` to get real assets.",
     );
-    io.info(`Building a ${target.name} game in ${workspace}`);
-    let lastCheck = await turn(idea);
-    if (assetGenerators.length > 0 && assetCount(workspace) === 0) {
-      io.info("The agent generated no assets this time; the game uses placeholder art. Ask for generated art as a change if you want it.");
-    }
-    await play();
-
+    let lastCheck: CheckResult | undefined;
     let changes = 0;
+    // A continued game starts with its first change request; the command line's idea is one.
+    let pending = options.existing ? options.idea?.trim() || undefined : undefined;
+    if (idea) {
+      io.info(`Building a ${target.name} game in ${workspace}`);
+      lastCheck = await turn(idea);
+      if (assetGenerators.length > 0 && assetCount(workspace) === 0) {
+        io.info("The agent generated no assets this time; the game uses placeholder art. Ask for generated art as a change if you want it.");
+      }
+      await play();
+    } else {
+      io.info(`Continuing your ${target.name} game in ${workspace}`);
+      if (!pending) await play();
+    }
+
     for (;;) {
-      const request = (await io.ask("What should change? (Enter to finish) "))?.trim();
+      const request = pending ?? (await io.ask("What should change? (Enter to finish) "))?.trim();
+      pending = undefined;
       if (!request || FINISH_WORDS.test(request)) break;
       await running?.stop();
       running = undefined;
@@ -103,7 +124,8 @@ export async function runPlainCoCreation(options: PlainCoCreationOptions): Promi
       await play();
     }
     io.info(`Done. Your game is in ${workspace}`);
-    return { workspace, changes, lastCheck };
+    // A continued game the user left unchanged gets tempi's check once, for the exit code.
+    return { workspace, changes, lastCheck: lastCheck ?? (await target.check(workspace)) };
   } finally {
     await running?.stop();
     dispose();

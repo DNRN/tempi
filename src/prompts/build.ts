@@ -1,4 +1,5 @@
 import type { AssetGenerator } from "../assets.js";
+import { type GameManifest, NOTES_FILE } from "../game.js";
 import { type CheckResult, formatCheckResult, type Target } from "../targets/target.js";
 
 /** Generated assets per agent turn: each one takes about 20 seconds or more. */
@@ -9,6 +10,7 @@ const WORKING_RULES = `How to work:
 - The user's other messages are change requests or questions about the game. For a question, answer it and leave the game's files alone. For a change, change the game in this workspace and keep what already works; keep existing assets unless the change needs new ones.
 - Keep the game small: one screen or level, a clear goal, simple controls. It must be playable now, not later.
 - After changing the game, run check_game and fix everything it reports. Finish only when it reports no errors. tempi checks the game again after your turn and starts it for the user.
+- After a build or a change, update ${NOTES_FILE}, your notes for whoever continues this game later (you, in a new session): what the game is, its controls, how its files are laid out, and one dated line per change. Keep it short and current; rewrite outdated lines instead of piling up history.
 - After a build or a change, end with two or three lines for the player: what the game is (or what changed) and its controls.`;
 
 /**
@@ -54,4 +56,22 @@ export function fixPrompt(result: CheckResult, target: Target): string {
 ${formatCheckResult(target, result)}
 
 Fix them, run check_game until it reports no errors, then end with the same short summary for the player.`;
+}
+
+/**
+ * Added to the system prompt when tempi continues a game that already exists
+ * (ADR 0010): what the game is and where to read up on it before changing it.
+ */
+export function resumeGuidance(manifest: GameManifest, notes: string | undefined): string {
+  const idea = manifest.idea ? `It started from the idea: "${manifest.idea}".` : "tempi did not create it, so there is no recorded idea.";
+  const notesPart = notes
+    ? `Your notes on the game, from ${NOTES_FILE}:
+
+${notes}
+
+Read the code the next change touches before you change it; the notes may be out of date.`
+    : `There are no notes on it yet (${NOTES_FILE}): read the game's code to learn how it works before you change it, and write the notes with your first change.`;
+  return `Continuing an existing game: this workspace already holds a playable game. ${idea} The user's messages are change requests or questions about it, never the idea for a new game; don't start over or replace the game.
+
+${notesPart}`;
 }
